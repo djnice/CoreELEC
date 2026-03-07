@@ -50,10 +50,10 @@ makeinstall_target() {
     . ${PROJECT_DIR}/${PROJECT}/devices/${DEVICE}/bootloader/subdevice_config.sh ${PKG_SUBDEVICE} ${PKG_NAME}
     find_file_path bootloader/${DEVICE_BOOT_INI} && cp -av ${FOUND_PATH} ${INSTALL}/usr/share/bootloader
     if [ ${DEVICE_UBOOT_BIN} ]; then
-        cp -av ${DEVICE_UBOOT_BIN} ${INSTALL}/usr/share/bootloader/${DEVICE_UBOOT}
+        cp -av ${DEVICE_UBOOT_BIN} ${INSTALL}/usr/share/bootloader/${DEVICE_UBOOT} || true
     fi
     if [ ${DEVICE_CHAIN_UBOOT_BIN} ]; then
-        cp -av ${DEVICE_CHAIN_UBOOT_BIN} ${INSTALL}/usr/share/bootloader/${DEVICE_CHAIN_UBOOT}
+        cp -av ${DEVICE_CHAIN_UBOOT_BIN} ${INSTALL}/usr/share/bootloader/${DEVICE_CHAIN_UBOOT} || true
     fi
 
     # Copy boot logo
