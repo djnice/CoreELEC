@@ -1,8 +1,8 @@
 diff --git a/addons/resource.language.en_gb/resources/strings.po b/addons/resource.language.en_gb/resources/strings.po
-index 592ba93..a223b76 100644
+index 592ba93..7eea8cb 100644
 --- a/addons/resource.language.en_gb/resources/strings.po
 +++ b/addons/resource.language.en_gb/resources/strings.po
-@@ -9123,6 +9123,16 @@ msgctxt "#14427"
+@@ -9123,6 +9123,26 @@ msgctxt "#14427"
  msgid "Player-Led"
  msgstr ""
  
@@ -16,14 +16,24 @@ index 592ba93..a223b76 100644
 +msgid "Quantize the composed Dolby Vision profile 7 FEL picture to the 10-bit video output with a fine blue noise dither instead of rounding, which keeps smooth gradients free of banding. S928X only."
 +msgstr ""
 +
++#: system/settings/settings.xml
++msgctxt "#14430"
++msgid "Dolby Vision FEL demo mode"
++msgstr ""
++
++#: system/settings/settings.xml
++msgctxt "#14431"
++msgid "Split screen comparison for profile 7 FEL titles: the left half is shown with the full FEL composition (RPU mapping and enhancement layer), the right half as without it (the base layer, as shown after the usual conversion to profile 8.1). S928X only."
++msgstr ""
++
  #: xbmc/music/MusicDatabase.cpp
  #: xbmc/video/VideoDatabase.cpp
  msgctxt "#15011"
 diff --git a/system/settings/settings.xml b/system/settings/settings.xml
-index 90289a5..399230d 100755
+index 90289a5..b674f30 100755
 --- a/system/settings/settings.xml
 +++ b/system/settings/settings.xml
-@@ -4035,6 +4035,12 @@
+@@ -4035,6 +4035,18 @@
            <default>false</default>
            <control type="toggle" />
          </setting>
@@ -33,15 +43,21 @@ index 90289a5..399230d 100755
 +          <default>true</default>
 +          <control type="toggle" />
 +        </setting>
++        <setting id="coreelec.amlogic.dvfeldemo" type="boolean" label="14430" help="14431">
++          <requirement>HAVE_AMCODEC</requirement>
++          <level>3</level>
++          <default>false</default>
++          <control type="toggle" />
++        </setting>
          <setting id="coreelec.amlogic.sdr2hdr" type="boolean" label="14404" help="14405">
            <requirement>HAVE_AMCODEC</requirement>
            <default>false</default>
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.cpp
 new file mode 100644
-index 0000000..3dd335f
+index 0000000..52cc57e
 --- /dev/null
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.cpp
-@@ -0,0 +1,865 @@
+@@ -0,0 +1,877 @@
 +/*
 + *  Copyright (C) 2026 Team CoreELEC
 + *  This file is part of Kodi - https://kodi.tv
@@ -586,6 +602,7 @@ index 0000000..3dd335f
 +      lastLabel = frame->pts;
 +      const int64_t pts = reordered ? slot : frame->pts;
 +      std::shared_ptr<felgpu_meta> meta;
++      // the RPU travels with the EL picture
 +      auto m = metas.find(frame->pts);
 +      if (m != metas.end())
 +      {
@@ -802,7 +819,7 @@ index 0000000..3dd335f
 +
 +    std::shared_ptr<felgpu_meta> current;
 +    const int64_t dumpPts = DumpPts();
-+    int dither = -1, pattern = -1;
++    int dither = -1, pattern = -1, demo = -1;
 +    auto nextDitherCheck = std::chrono::steady_clock::now();
 +    while (!m_stop)
 +    {
@@ -822,6 +839,17 @@ index 0000000..3dd335f
 +          pattern = pat;
 +          felgpu_set_pattern(fel, pat);
 +          CLog::Log(LOGINFO, "CAMLDvFel: test pattern {}", pat);
++        }
++        // split screen: the EL on the left half only
++        const int dem = CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(
++                            CSettings::SETTING_COREELEC_AMLOGIC_DVFEL_DEMO)
++                            ? 1
++                            : 0;
++        if (dem != demo)
++        {
++          demo = dem;
++          felgpu_set_demo(fel, dem);
++          CLog::Log(LOGINFO, "CAMLDvFel: demo mode {}", dem);
 +        }
 +      }
 +
@@ -1309,10 +1337,10 @@ index 0000000..91c6636
 +#endif
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/felgpu.c b/xbmc/cores/VideoPlayer/DVDCodecs/Video/felgpu.c
 new file mode 100644
-index 0000000..012d132
+index 0000000..f8ed5e7
 --- /dev/null
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/felgpu.c
-@@ -0,0 +1,741 @@
+@@ -0,0 +1,756 @@
 +#ifndef _GNU_SOURCE
 +#define _GNU_SOURCE
 +#endif
@@ -1352,6 +1380,7 @@ index 0000000..012d132
 +    GLuint lut;                     /* R32F LUT_W x LUT_ROWS */
 +    GLuint dither;                  /* R32F BN x BN blue noise thresholds */
 +    int dither_mode;                /* 0 off, 1 on, 2 left half only */
++    int demo;                       /* EL on the left half only */
 +    int pattern;                    /* 1: grey ramp test pattern instead of the video */
 +    float vwt_y[12], vwt_c[12], hwt_y[12], hwt_c[12];
 +    int vbase_y[2], vbase_c[2], hbase_y[2], hbase_c[2];
@@ -1512,6 +1541,7 @@ index 0000000..012d132
 +    "uniform float mmrc[16];\n"
 +    "uniform bool cpoly[2];\n"
 +    "uniform bool use_el;\n"
++    "uniform int el_split;\n"   /* demo: the composition only left of this column */
 +    "uniform float inv_bl;\n"
 +    "out uvec2 o;\n"
 +    "float mmr_eval(int b, float c0, vec3 sig) {\n"
@@ -1553,7 +1583,10 @@ index 0000000..012d132
 +    "    vcb = cpoly[0] ? lut_at(4, cb) : predict_mmr(0, sig.y, sig);\n"
 +    "    vcr = cpoly[1] ? lut_at(5, cr) : predict_mmr(1, sig.z, sig);\n"
 +    "  }\n"
-+    "  if (use_el) {\n"
++    "  if (c.x >= el_split) {\n"   /* demo: the untouched base layer, as a no-op P8.1 RPU shows it */
++    "    vcb = float(cb) / 1024.0;\n"
++    "    vcr = float(cr) / 1024.0;\n"
++    "  } else if (use_el) {\n"
 +    "    vec2 el = el_h(elc, c);\n"
 +    "    vcb += lut_at(2, uint(el.x));\n"
 +    "    vcr += lut_at(3, uint(el.y));\n"
@@ -1570,13 +1603,16 @@ index 0000000..012d132
 +    "uniform sampler2D ely;\n"
 +    "uniform usampler2D chroma;\n"
 +    "uniform bool use_el;\n"
++    "uniform int el_split;\n"
 +    "out vec4 o;\n"
 +    "void main() {\n"
 +    "  ivec2 p = ivec2(gl_FragCoord.xy);\n"
 +    "  uint w = word_at(bl, p);\n"
 +    "  uvec2 c = texelFetch(chroma, p >> 1, 0).xy;\n"
 +    "  float v = lut_at(0, y_of(w));\n"
-+    "  if (use_el)\n"
++    "  if (p.x >= el_split)\n"
++    "    v = float(y_of(w)) / 1024.0;\n"
++    "  else if (use_el)\n"
 +    "    v += lut_at(1, uint(el_hg(ely, p)));\n"
 +    "  if (pattern != 0)\n"
 +    "    v = pattern_v(p, textureSize(bl, 0));\n"
@@ -2008,6 +2044,7 @@ index 0000000..012d132
 +    bind_tex(p, "lut", 2, f->lut);
 +    bind_tex(p, "dither", 3, f->dither);
 +    glUniform1i(glGetUniformLocation(p, "dither_split"), dither_split(f, f->w / 2));
++    glUniform1i(glGetUniformLocation(p, "el_split"), f->demo ? f->w / 4 : f->w);
 +    glUniform1i(glGetUniformLocation(p, "pattern"), f->pattern);
 +    glUniform1i(glGetUniformLocation(p, "pass_h"), f->h / 2);
 +    draw(f->fbo_chroma, f->w / 2, f->h / 2);
@@ -2025,6 +2062,7 @@ index 0000000..012d132
 +    bind_tex(p, "lut", 3, f->lut);
 +    bind_tex(p, "dither", 4, f->dither);
 +    glUniform1i(glGetUniformLocation(p, "dither_split"), dither_split(f, f->w));
++    glUniform1i(glGetUniformLocation(p, "el_split"), f->demo ? f->w / 2 : f->w);
 +    glUniform1i(glGetUniformLocation(p, "pattern"), f->pattern);
 +    glUniform1i(glGetUniformLocation(p, "pass_h"), f->h);
 +    draw(out_fbo, f->w, f->h);
@@ -2042,6 +2080,11 @@ index 0000000..012d132
 +    f->dither_mode = mode;
 +}
 +
++void felgpu_set_demo(struct felgpu *f, int on)
++{
++    f->demo = on;
++}
++
 +void felgpu_set_pattern(struct felgpu *f, int pattern)
 +{
 +    f->pattern = pattern;
@@ -2056,10 +2099,10 @@ index 0000000..012d132
 +}
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/felgpu.h b/xbmc/cores/VideoPlayer/DVDCodecs/Video/felgpu.h
 new file mode 100644
-index 0000000..749ea2f
+index 0000000..4dfa143
 --- /dev/null
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/felgpu.h
-@@ -0,0 +1,80 @@
+@@ -0,0 +1,87 @@
 +/*
 + * felgpu - Dolby Vision FEL composition on OpenGL ES 3.2
 + *
@@ -2125,6 +2168,13 @@ index 0000000..749ea2f
 +void felgpu_set_dither(struct felgpu *f, int mode);
 +
 +/*
++ * demo (1): the composition on the left half only; the right half shows the
++ * untouched base layer, as the display shows it after a P7 -> P8.1 conversion
++ * with a no-op mapping (CoreELEC without FEL composition)
++ */
++void felgpu_set_demo(struct felgpu *f, int on);
++
++/*
 + * test pattern instead of the composition (1): 12-bit grey ramps in 4 bands,
 + * dark (10-bit codes 160-240) and mid (330-410); with dither on, the upper
 + * band of each pair is dithered and the lower one rounded
@@ -2141,14 +2191,15 @@ index 0000000..749ea2f
 +
 +#endif
 diff --git a/xbmc/settings/Settings.h b/xbmc/settings/Settings.h
-index 2b2da5d..92ff4aa 100644
+index 2b2da5d..7821fa6 100644
 --- a/xbmc/settings/Settings.h
 +++ b/xbmc/settings/Settings.h
-@@ -467,6 +467,7 @@ public:
+@@ -467,6 +467,8 @@ public:
    static constexpr auto SETTING_MASTERLOCK_STARTUPLOCK = "masterlock.startuplock";
    static constexpr auto SETTING_MASTERLOCK_MAXRETRIES = "masterlock.maxretries";
    static constexpr auto SETTING_COREELEC_AMLOGIC_NOISEREDUCTION = "coreelec.amlogic.noisereduction";
 +  static constexpr auto SETTING_COREELEC_AMLOGIC_DVFEL_DITHER = "coreelec.amlogic.dvfeldither";
++  static constexpr auto SETTING_COREELEC_AMLOGIC_DVFEL_DEMO = "coreelec.amlogic.dvfeldemo";
    static constexpr auto SETTING_COREELEC_AMLOGIC_SDR2HDR = "coreelec.amlogic.sdr2hdr";
    static constexpr auto SETTING_COREELEC_AMLOGIC_HDR2SDR = "coreelec.amlogic.hdr2sdr";
    static constexpr auto SETTING_COREELEC_AMLOGIC_SDR2DV = "coreelec.amlogic.sdr2dv";
