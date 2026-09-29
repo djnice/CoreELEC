@@ -1,5 +1,5 @@
 diff --git a/addons/resource.language.en_gb/resources/strings.po b/addons/resource.language.en_gb/resources/strings.po
-index 592ba93..711cc1f 100644
+index 79d522f65d..705b78af24 100644
 --- a/addons/resource.language.en_gb/resources/strings.po
 +++ b/addons/resource.language.en_gb/resources/strings.po
 @@ -9123,6 +9123,36 @@ msgctxt "#14427"
@@ -40,7 +40,7 @@ index 592ba93..711cc1f 100644
  #: xbmc/video/VideoDatabase.cpp
  msgctxt "#15011"
 diff --git a/system/settings/settings.xml b/system/settings/settings.xml
-index 90289a5..13f73b6 100755
+index 0656f64bbb..68faa0cb97 100755
 --- a/system/settings/settings.xml
 +++ b/system/settings/settings.xml
 @@ -4035,6 +4035,30 @@
@@ -76,7 +76,7 @@ index 90289a5..13f73b6 100755
            <default>false</default>
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.cpp
 new file mode 100644
-index 0000000..52cc57e
+index 0000000000..52cc57ead3
 --- /dev/null
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.cpp
 @@ -0,0 +1,877 @@
@@ -959,7 +959,7 @@ index 0000000..52cc57e
 +}
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.h b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.h
 new file mode 100644
-index 0000000..eb6264f
+index 0000000000..eb6264f1f6
 --- /dev/null
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.h
 @@ -0,0 +1,119 @@
@@ -1083,7 +1083,7 @@ index 0000000..eb6264f
 +  double m_gpuMsSum{0};
 +};
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/CMakeLists.txt b/xbmc/cores/VideoPlayer/DVDCodecs/Video/CMakeLists.txt
-index 6e8283c..4bdb078 100644
+index 6e8283c395..4bdb0781d0 100644
 --- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/CMakeLists.txt
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/CMakeLists.txt
 @@ -14,9 +14,14 @@ endif()
@@ -1104,7 +1104,7 @@ index 6e8283c..4bdb078 100644
  
  if(CORE_SYSTEM_NAME STREQUAL windows OR CORE_SYSTEM_NAME STREQUAL windowsstore)
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.cpp
-index 1a79460..69c8cea 100644
+index 1a79460681..69c8ceac46 100644
 --- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.cpp
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.cpp
 @@ -348,6 +348,16 @@ bool CDVDVideoCodecAmlogic::Open(CDVDStreamInfo &hints, CDVDCodecOptions &option
@@ -1258,7 +1258,7 @@ index 1a79460..69c8cea 100644
    {
      DLDemuxPacket dual_layer_packet= m_packages.front();
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.h b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.h
-index bea43af..a0626fa 100644
+index bea43af30a..a0626fa934 100644
 --- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.h
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.h
 @@ -8,6 +8,7 @@
@@ -1290,7 +1290,7 @@ index bea43af..a0626fa 100644
    static std::atomic<bool> m_InstanceGuard;
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/dvfel_uapi.h b/xbmc/cores/VideoPlayer/DVDCodecs/Video/dvfel_uapi.h
 new file mode 100644
-index 0000000..91c6636
+index 0000000000..91c663650a
 --- /dev/null
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/dvfel_uapi.h
 @@ -0,0 +1,65 @@
@@ -1361,7 +1361,7 @@ index 0000000..91c6636
 +#endif
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/felgpu.c b/xbmc/cores/VideoPlayer/DVDCodecs/Video/felgpu.c
 new file mode 100644
-index 0000000..f8ed5e7
+index 0000000000..f8ed5e76d9
 --- /dev/null
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/felgpu.c
 @@ -0,0 +1,756 @@
@@ -2123,7 +2123,7 @@ index 0000000..f8ed5e7
 +}
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/felgpu.h b/xbmc/cores/VideoPlayer/DVDCodecs/Video/felgpu.h
 new file mode 100644
-index 0000000..4dfa143
+index 0000000000..4dfa143ba7
 --- /dev/null
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/felgpu.h
 @@ -0,0 +1,87 @@
@@ -2215,7 +2215,7 @@ index 0000000..4dfa143
 +
 +#endif
 diff --git a/xbmc/settings/SettingConditions.cpp b/xbmc/settings/SettingConditions.cpp
-index a9b33a0..16340f1 100644
+index a9b33a0807..16340f10af 100644
 --- a/xbmc/settings/SettingConditions.cpp
 +++ b/xbmc/settings/SettingConditions.cpp
 @@ -417,6 +417,10 @@ void CSettingConditions::Initialize()
@@ -2230,7 +2230,7 @@ index a9b33a0..16340f1 100644
  #if defined(TARGET_WINDOWS)
    m_simpleConditions.emplace("has_dx");
 diff --git a/xbmc/settings/Settings.h b/xbmc/settings/Settings.h
-index 2b2da5d..648388a 100644
+index 2b2da5d339..648388ae23 100644
 --- a/xbmc/settings/Settings.h
 +++ b/xbmc/settings/Settings.h
 @@ -467,6 +467,9 @@ public:
@@ -2244,7 +2244,7 @@ index 2b2da5d..648388a 100644
    static constexpr auto SETTING_COREELEC_AMLOGIC_HDR2SDR = "coreelec.amlogic.hdr2sdr";
    static constexpr auto SETTING_COREELEC_AMLOGIC_SDR2DV = "coreelec.amlogic.sdr2dv";
 diff --git a/xbmc/utils/BitstreamConverter.cpp b/xbmc/utils/BitstreamConverter.cpp
-index afe25d4..2ed0bd6 100644
+index afe25d4eab..2ed0bd6734 100644
 --- a/xbmc/utils/BitstreamConverter.cpp
 +++ b/xbmc/utils/BitstreamConverter.cpp
 @@ -659,17 +659,19 @@ bool CBitstreamConverter::Convert(uint8_t* pData, int iSize)
@@ -2329,7 +2329,7 @@ index afe25d4..2ed0bd6 100644
    if (m_doviELTested && !m_convert_dovi && !m_setDoviZeroLevel5)
      return NULL;
 diff --git a/xbmc/utils/BitstreamConverter.h b/xbmc/utils/BitstreamConverter.h
-index 3e3b182..4b167ae 100644
+index 3e3b182340..4b167ae50f 100644
 --- a/xbmc/utils/BitstreamConverter.h
 +++ b/xbmc/utils/BitstreamConverter.h
 @@ -95,6 +95,17 @@ public:
