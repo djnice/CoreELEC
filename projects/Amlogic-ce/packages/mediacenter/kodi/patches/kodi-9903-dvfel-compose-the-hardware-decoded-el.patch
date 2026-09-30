@@ -411,7 +411,7 @@ index eb6264f..25b6582 100644
    std::thread m_elThread;
    std::thread m_gpuThread;
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.cpp
-index 69c8cea..a9f8da5 100644
+index 2ebcb59..c2db1bc 100644
 --- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.cpp
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.cpp
 @@ -7,6 +7,8 @@
@@ -464,18 +464,18 @@ index 69c8cea..a9f8da5 100644
  CAMLVideoBufferPool::~CAMLVideoBufferPool()
  {
    CLog::Log(LOGDEBUG, "CAMLVideoBufferPool::~CAMLVideoBufferPool: Deleting {:d} buffers", static_cast<unsigned int>(m_videoBuffers.size()) );
-@@ -357,6 +393,10 @@ bool CDVDVideoCodecAmlogic::Open(CDVDStreamInfo &hints, CDVDCodecOptions &option
-             {
-               m_dvFel = std::make_unique<CAMLDvFel>();
-               m_bitstream->SetDoviElSink(m_dvFel.get());
-+              // hardware EL decoding needs the EL from the very first access
-+              // unit (its parameter sets); dropped again if the title is MEL
-+              if (CAMLDvFel::SupportsHwEl())
-+                m_bitstream->SetKeepDoviEl(true);
-             }
+@@ -363,6 +399,10 @@ bool CDVDVideoCodecAmlogic::Open(CDVDStreamInfo &hints, CDVDCodecOptions &option
+           {
+             m_dvFel = std::make_unique<CAMLDvFel>();
+             m_bitstream->SetDoviElSink(m_dvFel.get());
++            // hardware EL decoding needs the EL from the very first access
++            // unit (its parameter sets); dropped again if the title is MEL
++            if (CAMLDvFel::SupportsHwEl())
++              m_bitstream->SetKeepDoviEl(true);
            }
          }
-@@ -674,11 +714,27 @@ bool CDVDVideoCodecAmlogic::AddData(const DemuxPacket &packet)
+       }
+@@ -683,11 +723,27 @@ bool CDVDVideoCodecAmlogic::AddData(const DemuxPacket &packet)
        m_processInfo.SetDoviIsFEL(doviIsFEL);
        m_processInfo.SetIsHdr10Plus(IsHdr10Plus);
  
@@ -505,7 +505,7 @@ index 69c8cea..a9f8da5 100644
        }
        if (m_dvFel)
          m_streamMeta.flags.push_back("fel-composed");
-@@ -725,9 +781,11 @@ bool CDVDVideoCodecAmlogic::AddData(const DemuxPacket &packet)
+@@ -734,9 +790,11 @@ bool CDVDVideoCodecAmlogic::AddData(const DemuxPacket &packet)
    {
      if (data_added && packet.pData && !m_hints.ptsinvalid && blPts != DVD_NOPTS_VALUE &&
          elPts != DVD_NOPTS_VALUE)
