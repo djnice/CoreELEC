@@ -1,0 +1,33 @@
+From: djnice <djnice77@gmail.com>
+Subject: [PATCH] AMLCodec: end a drain whose pictures stopped coming
+
+In a drain GetPicture returned VC_NONE as long as the amlvideo queue held a
+picture. When the last pictures stop leaving the video layer, e.g. playback
+stopped right at the end of a file while composed FEL frames still wait there
+(P7_FEL_STDL1: the dvfel waits for the missing EL of the last pictures, so its
+drain takes longer), the player sat in its 40 s drain timeout before the next
+file could start. End the drain after 2 s without a picture.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp
+index d9e2f0f..92981cd 100644
+--- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp
++++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp
+@@ -3086,6 +3086,16 @@ CDVDVideoCodec::VCReturn CAMLCodec::GetPicture(VideoPicture *pVideoPicture)
+   }
+   else if (m_drain && m_buffer_level_ready && (queued_frames == 0))
+     return CDVDVideoCodec::VC_EOF;
++  // The last pictures can stop leaving the video layer during the drain, e.g.
++  // when playback is stopped right at the end of a file while composed FEL
++  // frames still wait there: VC_NONE then held the player until its 40 s drain
++  // timeout. Pictures come out at the frame rate while a drain makes progress.
++  else if (m_drain && m_buffer_level_ready && elapsed_since_last_frame > std::chrono::seconds(2))
++  {
++    CLog::Log(LOGINFO, "CAMLCodec::GetPicture: drain without a picture for {:d} ms, {:d} queued: done",
++              elapsed_since_last_frame.count(), queued_frames);
++    return CDVDVideoCodec::VC_EOF;
++  }
+   else if ((m_drain && m_buffer_level_ready) || (buffer_level > (streambuffer ? 100.0f : 10.0f)))
+     return CDVDVideoCodec::VC_NONE;
+   else if (ret != EAGAIN || elapsed_since_last_frame > std::chrono::seconds(m_decoder_timeout))
