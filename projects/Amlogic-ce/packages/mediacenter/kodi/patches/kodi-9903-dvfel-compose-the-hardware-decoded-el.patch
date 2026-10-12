@@ -22,6 +22,17 @@ costs CPU. The Dolby Vision core still gets the converted no-op RPU.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
+
+  .../VideoPlayer/DVDCodecs/Video/AMLDvFel.cpp  | 162 ++++++++++++++++--
+  .../VideoPlayer/DVDCodecs/Video/AMLDvFel.h    |  27 ++-
+  .../DVDCodecs/Video/DVDVideoCodecAmlogic.cpp  |  66 ++++++-
+  .../VideoPlayer/DVDCodecs/Video/dvfel_uapi.h  |  17 ++
+  .../VideoPlayer/DVDCodecs/Video/felgpu.c      |  56 +++++-
+  .../VideoPlayer/DVDCodecs/Video/felgpu.h      |   5 +
+  xbmc/utils/BitstreamConverter.cpp             |   6 +-
+  xbmc/utils/BitstreamConverter.h               |   5 +
+  8 files changed, 313 insertions(+), 31 deletions(-)
+
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.cpp
 index 8c7ef23..cf204ee 100644
 --- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.cpp
@@ -411,7 +422,7 @@ index eb6264f..25b6582 100644
    std::thread m_elThread;
    std::thread m_gpuThread;
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.cpp
-index 2ebcb59..c2db1bc 100644
+index f319870..253bd00 100644
 --- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.cpp
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.cpp
 @@ -7,6 +7,8 @@
@@ -423,7 +434,7 @@ index 2ebcb59..c2db1bc 100644
  #include <math.h>
  
  #include "DVDCodecs/DVDFactoryCodec.h"
-@@ -34,6 +36,40 @@ extern "C"
+@@ -32,6 +34,40 @@ extern "C"
  
  #define __MODULE_NAME__ "DVDVideoCodecAmlogic"
  
@@ -464,7 +475,7 @@ index 2ebcb59..c2db1bc 100644
  CAMLVideoBufferPool::~CAMLVideoBufferPool()
  {
    CLog::Log(LOGDEBUG, "CAMLVideoBufferPool::~CAMLVideoBufferPool: Deleting {:d} buffers", static_cast<unsigned int>(m_videoBuffers.size()) );
-@@ -363,6 +399,10 @@ bool CDVDVideoCodecAmlogic::Open(CDVDStreamInfo &hints, CDVDCodecOptions &option
+@@ -361,6 +397,10 @@ bool CDVDVideoCodecAmlogic::Open(CDVDStreamInfo &hints, CDVDCodecOptions &option
            {
              m_dvFel = std::make_unique<CAMLDvFel>();
              m_bitstream->SetDoviElSink(m_dvFel.get());
@@ -475,7 +486,7 @@ index 2ebcb59..c2db1bc 100644
            }
          }
        }
-@@ -683,11 +723,27 @@ bool CDVDVideoCodecAmlogic::AddData(const DemuxPacket &packet)
+@@ -680,11 +720,27 @@ bool CDVDVideoCodecAmlogic::AddData(const DemuxPacket &packet)
        m_processInfo.SetDoviIsFEL(doviIsFEL);
        m_processInfo.SetIsHdr10Plus(IsHdr10Plus);
  
@@ -505,7 +516,7 @@ index 2ebcb59..c2db1bc 100644
        }
        if (m_dvFel)
          m_streamMeta.flags.push_back("fel-composed");
-@@ -734,9 +790,11 @@ bool CDVDVideoCodecAmlogic::AddData(const DemuxPacket &packet)
+@@ -731,9 +787,11 @@ bool CDVDVideoCodecAmlogic::AddData(const DemuxPacket &packet)
    {
      if (data_added && packet.pData && !m_hints.ptsinvalid && blPts != DVD_NOPTS_VALUE &&
          elPts != DVD_NOPTS_VALUE)

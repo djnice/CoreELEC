@@ -15,11 +15,29 @@ With it:
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
+
+  .../resources/strings.po                      |  12 +
+  cmake/modules/FindAML.cmake                   |  16 +-
+  system/settings/settings.xml                  |   6 +
+  .../VideoPlayer/DVDCodecs/Video/AMLCodec.cpp  | 182 +++++-
+  .../VideoPlayer/DVDCodecs/Video/AMLCodec.h    |  11 +
+  .../VideoPlayer/DVDCodecs/Video/AMLMvc.cpp    | 593 ++++++++++++++++++
+  .../VideoPlayer/DVDCodecs/Video/AMLMvc.h      | 119 ++++
+  .../DVDCodecs/Video/CMakeLists.txt            |   3 +
+  .../DVDCodecs/Video/DVDVideoCodecAmlogic.cpp  |   7 +
+  .../VideoPlayer/DVDCodecs/Video/mvcout_uapi.h |  62 ++
+  xbmc/guilib/StereoscopicsManager.cpp          |   5 +
+  xbmc/settings/SettingConditions.cpp           |   5 +
+  xbmc/settings/Settings.h                      |   1 +
+  xbmc/windowing/amlogic/AMLDisplay.cpp         |  46 +-
+  xbmc/windowing/amlogic/AMLDisplay.h           |   3 +
+  15 files changed, 1064 insertions(+), 7 deletions(-)
+
 diff --git a/addons/resource.language.en_gb/resources/strings.po b/addons/resource.language.en_gb/resources/strings.po
-index a29b506..1f44c98 100644
+index 7234287..61a27a8 100644
 --- a/addons/resource.language.en_gb/resources/strings.po
 +++ b/addons/resource.language.en_gb/resources/strings.po
-@@ -9153,6 +9153,18 @@ msgctxt "#14433"
+@@ -9173,6 +9173,18 @@ msgctxt "#14433"
  msgid "Compose the full enhancement layer of Dolby Vision profile 7 FEL titles on the GPU. When disabled, FEL titles play like MEL ones: converted to profile 8.1 without the enhancement layer. Takes effect when playback starts. S928X only."
  msgstr ""
  
@@ -73,10 +91,10 @@ index 7a9a2f1..bb0567e 100644
 -mark_as_advanced(AMLCODEC_INCLUDE_DIR)
 +mark_as_advanced(AMLCODEC_INCLUDE_DIR EDGE264_INCLUDE_DIR EDGE264_LIBRARY)
 diff --git a/system/settings/settings.xml b/system/settings/settings.xml
-index 68faa0c..a0b87be 100755
+index 1a0e782..1ccfff3 100755
 --- a/system/settings/settings.xml
 +++ b/system/settings/settings.xml
-@@ -4059,6 +4059,12 @@
+@@ -4074,6 +4074,12 @@
              <dependency type="enable" setting="coreelec.amlogic.dvfelenable">true</dependency>
            </dependencies>
          </setting>
@@ -90,7 +108,7 @@ index 68faa0c..a0b87be 100755
            <requirement>HAVE_AMCODEC</requirement>
            <default>false</default>
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp
-index d73a2d9..d9e2f0f 100644
+index f32a633..76ef50a 100644
 --- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp
 @@ -8,6 +8,7 @@
@@ -101,7 +119,7 @@ index d73a2d9..d9e2f0f 100644
  #include "DynamicDll.h"
  
  #include "cores/VideoPlayer/Interface/TimingConstants.h"
-@@ -2121,6 +2122,12 @@ bool CAMLCodec::OpenDecoder(CDVDStreamInfo &hints, bool doviIsFEL)
+@@ -2195,6 +2196,12 @@ bool CAMLCodec::OpenDecoder(CDVDStreamInfo &hints, bool doviIsFEL)
  
    ShowMainVideo(false);
  
@@ -114,7 +132,7 @@ index d73a2d9..d9e2f0f 100644
    am_packet_init(&am_private->am_pkt);
    // default stream type
    am_private->stream_type      = AM_STREAM_ES;
-@@ -2582,6 +2589,12 @@ void CAMLCodec::CloseDecoder()
+@@ -2685,6 +2692,12 @@ void CAMLCodec::CloseDecoder()
    bool dv_enabled(AmlDisplay->aml_get_drmProperty("dv_enable", DRM_MODE_OBJECT_CRTC));
    CLog::Log(LOGDEBUG, "CAMLCodec::CloseDecoder");
  
@@ -127,7 +145,7 @@ index d73a2d9..d9e2f0f 100644
    SetPollDevice(-1);
  
    // never leave vcodec ff/rw or paused.
-@@ -2665,6 +2678,17 @@ void CAMLCodec::Reset()
+@@ -2775,6 +2788,17 @@ void CAMLCodec::Reset()
    if (!m_opened)
      return;
  
@@ -145,7 +163,7 @@ index d73a2d9..d9e2f0f 100644
    SetPollDevice(-1);
  
    // set the system blackout_policy to leave the last frame showing
-@@ -2713,6 +2737,9 @@ void CAMLCodec::Reset()
+@@ -2823,6 +2847,9 @@ void CAMLCodec::Reset()
  
  bool CAMLCodec::AddData(uint8_t *pData, size_t iSize, double dts, double pts)
  {
@@ -155,7 +173,7 @@ index d73a2d9..d9e2f0f 100644
    int data_len, free_len, size;
    int chunk_size = calc_chunk_size(iSize);
    float new_buffer_level = GetBufferLevel(chunk_size, data_len, free_len, size);
-@@ -2923,6 +2950,14 @@ int CAMLCodec::ReleaseFrame(const uint32_t index, bool drop)
+@@ -3208,6 +3235,14 @@ int CAMLCodec::ReleaseFrame(const uint32_t index, bool drop)
  
  float CAMLCodec::GetBufferLevel(int new_chunk, int &data_len, int &free_len, int &size)
  {
@@ -170,7 +188,7 @@ index d73a2d9..d9e2f0f 100644
    struct buf_status bs;
    float level = 0.0f;
    m_dll->codec_get_vbuf_state(&am_private->vcodec, &bs);
-@@ -2980,6 +3015,9 @@ int CAMLCodec::DequeueBuffer()
+@@ -3265,6 +3300,9 @@ int CAMLCodec::DequeueBuffer()
  
  CDVDVideoCodec::VCReturn CAMLCodec::GetPicture(VideoPicture *pVideoPicture)
  {
@@ -180,7 +198,7 @@ index d73a2d9..d9e2f0f 100644
    int ret = EAGAIN;
    int queued_frames = 0;
    int data_len, free_len, size;
-@@ -3072,7 +3110,7 @@ void CAMLCodec::SetSpeed(int speed)
+@@ -3357,7 +3395,7 @@ void CAMLCodec::SetSpeed(int speed)
    // of if we are open or not.
    m_speed = speed;
  
@@ -189,7 +207,7 @@ index d73a2d9..d9e2f0f 100644
      return;
  
    switch(speed)
-@@ -3286,6 +3324,29 @@ void CAMLCodec::SetVideoRect(const CRect &SrcRect, const CRect &DestRect)
+@@ -3571,6 +3609,29 @@ void CAMLCodec::SetVideoRect(const CRect &SrcRect, const CRect &DestRect)
        case VFORMAT_H264MVC:
          {
            mvc_view_mode = m_processInfo.GetVideoStereoMode() == "block_lr" ? 3 : 2;
@@ -219,7 +237,7 @@ index d73a2d9..d9e2f0f 100644
            switch (m_guiStereoMode)
            {
              case RenderStereoMode::HARDWAREBASED:
-@@ -3421,3 +3482,122 @@ std::string CAMLCodec::GetHDRStaticMetadata(bool dv_enable)
+@@ -3706,3 +3767,122 @@ std::string CAMLCodec::GetHDRStaticMetadata(bool dv_enable)
      CLog::Log(LOGDEBUG, "CAMLCodec::GetHDRStaticMetadata - Created the following config: {}", config_data);
    return config_data;
  }
@@ -343,7 +361,7 @@ index d73a2d9..d9e2f0f 100644
 +  return m_mvc->IsFull() ? CDVDVideoCodec::VC_NONE : CDVDVideoCodec::VC_BUFFER;
 +}
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.h b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.h
-index c4a61ce..c5fd9aa 100644
+index df2086e..d516563 100644
 --- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.h
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.h
 @@ -19,6 +19,7 @@
@@ -362,9 +380,9 @@ index c4a61ce..c5fd9aa 100644
  
  struct vpp_pq_ctrl_s {
  	unsigned int length;
-@@ -91,6 +93,9 @@ public:
-   static int    PollFrame();
-   static void   SetPollDevice(int device);
+@@ -126,6 +128,9 @@ public:
+   //! device, missed vsyncs): the caller then waits for the vblank itself
+   static bool   WaitPresentStep(uint64_t& seen, int fenceFd);
  
 +  //! software 3D MVC decoding (edge264 + mvcout) is used for this stream
 +  bool          IsSoftwareMvc() const { return m_mvc != nullptr; }
@@ -372,7 +390,7 @@ index c4a61ce..c5fd9aa 100644
  private:
    void          ShowMainVideo(const bool show);
    void          SetVideoZoom(const float zoom);
-@@ -135,6 +140,12 @@ private:
+@@ -170,6 +175,12 @@ private:
    PosixFilePtr     m_amlVideoFile;
    std::mutex       m_amlVideoFileMutex;
    std::string      m_defaultVfmMap;
@@ -1128,10 +1146,10 @@ index 4bdb078..5814ee3 100644
                        dvfel_uapi.h
                        felgpu.h)
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.cpp
-index c2db1bc..c578699 100644
+index 253bd00..a205677 100644
 --- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.cpp
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.cpp
-@@ -751,6 +751,13 @@ bool CDVDVideoCodecAmlogic::AddData(const DemuxPacket &packet)
+@@ -748,6 +748,13 @@ bool CDVDVideoCodecAmlogic::AddData(const DemuxPacket &packet)
        CLog::Log(LOGINFO, "CDVDVideoCodecAmlogic::{}: Open decoder: fps:{:d}/{:d}", __FUNCTION__, m_hints.fpsrate, m_hints.fpsscale);
        if (m_Codec && !m_Codec->OpenDecoder(m_hints, doviIsFEL))
          CLog::Log(LOGERROR, "CDVDVideoCodecAmlogic::{}: Failed to open Amlogic Codec", __FUNCTION__);
@@ -1246,7 +1264,7 @@ index 16340f1..4dca011 100644
  #if defined(TARGET_WINDOWS)
    m_simpleConditions.emplace("has_dx");
 diff --git a/xbmc/settings/Settings.h b/xbmc/settings/Settings.h
-index 648388a..5e42b83 100644
+index 6bbd4f9..28598d0 100644
 --- a/xbmc/settings/Settings.h
 +++ b/xbmc/settings/Settings.h
 @@ -468,6 +468,7 @@ public:
@@ -1355,10 +1373,10 @@ index 8588c01..31378c5 100644
              break;
          }
 diff --git a/xbmc/windowing/amlogic/AMLDisplay.h b/xbmc/windowing/amlogic/AMLDisplay.h
-index 1d1fc46..b1367d0 100644
+index 1145c5b..ed2d49f 100644
 --- a/xbmc/windowing/amlogic/AMLDisplay.h
 +++ b/xbmc/windowing/amlogic/AMLDisplay.h
-@@ -127,6 +127,9 @@ private:
+@@ -128,6 +128,9 @@ private:
      unsigned int obj_type, unsigned int value, drmModeAtomicReqPtr req);
    bool SupportsFormat(drmModePlane *plane, uint32_t format);
    int m_fd{-1};

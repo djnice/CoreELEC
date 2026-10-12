@@ -10,11 +10,15 @@ file could start. End the drain after 2 s without a picture.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
+
+  xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp | 10 ++++++++++
+  1 file changed, 10 insertions(+)
+
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp
-index d9e2f0f..92981cd 100644
+index 76ef50a..9edb316 100644
 --- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp
-@@ -3086,6 +3086,16 @@ CDVDVideoCodec::VCReturn CAMLCodec::GetPicture(VideoPicture *pVideoPicture)
+@@ -3371,6 +3371,16 @@ CDVDVideoCodec::VCReturn CAMLCodec::GetPicture(VideoPicture *pVideoPicture)
    }
    else if (m_drain && m_buffer_level_ready && (queued_frames == 0))
      return CDVDVideoCodec::VC_EOF;

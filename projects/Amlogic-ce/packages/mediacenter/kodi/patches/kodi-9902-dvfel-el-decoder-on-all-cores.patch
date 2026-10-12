@@ -11,7 +11,12 @@ Jurassic Park, 28 s: 152 -> 14 frames without EL.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
+
+  xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.cpp | 8 ++++++--
+  1 file changed, 6 insertions(+), 2 deletions(-)
+
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.cpp
+index 52cc57e..8c7ef23 100644
 --- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.cpp
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.cpp
 @@ -15,6 +15,7 @@
@@ -22,7 +27,7 @@ diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.cpp b/xbmc/cores/Vi
  #include <cmath>
  #include <climits>
  #include <cstring>
-@@ -47,7 +48,7 @@
+@@ -47,7 +48,7 @@ namespace
  constexpr const char* DVFEL_DEV = "/dev/dvfel";
  constexpr int GPU_BUFFERS = 3;
  constexpr int EL_TAPS = 6;             // Lanczos-3, see felgpu.h
@@ -31,7 +36,7 @@ diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.cpp b/xbmc/cores/Vi
  // Kodi feeds packets ~1.2 s ahead of display; EL decoding is paced to stay
  // at most EL_LEAD_US ahead of the frame the kernel asked for last
  constexpr int64_t EL_LEAD_US = 350000;
-@@ -406,7 +407,10 @@
+@@ -406,7 +407,10 @@ void CAMLDvFel::ElThread()
    AVCodecContext* ctx = codec ? avcodec_alloc_context3(codec) : nullptr;
    if (!ctx)
      return;
