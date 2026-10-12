@@ -44,6 +44,21 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
   .../amlogic/ScreenshotSurfaceAML.cpp          |  19 +-
   11 files changed, 420 insertions(+), 84 deletions(-)
 
+
+  .../resources/strings.po                      |  14 +-
+  system/settings/settings.xml                  |   5 +
+  xbmc/application/Application.cpp              |   3 +-
+  .../VideoPlayer/DVDCodecs/Video/AMLCodec.h    |   8 +
+  .../HwDecRender/RendererAML.cpp               |  49 ++-
+  .../VideoRenderers/HwDecRender/RendererAML.h  |   2 +
+  xbmc/settings/Settings.h                      |   1 +
+  xbmc/utils/IScreenshotSurface.h               |  21 ++
+  xbmc/utils/Screenshot.cpp                     |  26 ++
+  xbmc/utils/ScreenshotAML.cpp                  | 325 ++++++++++++++----
+  xbmc/utils/ScreenshotAML.h                    |  52 ++-
+  .../amlogic/ScreenshotSurfaceAML.cpp          |  19 +-
+  12 files changed, 441 insertions(+), 84 deletions(-)
+
 diff --git a/addons/resource.language.en_gb/resources/strings.po b/addons/resource.language.en_gb/resources/strings.po
 index 61a27a8..cdcabd4 100644
 --- a/addons/resource.language.en_gb/resources/strings.po
@@ -99,8 +114,27 @@ index d8d55b8..2e31bd7 100644
    result.content = CaptureContent::COMPOSITE; // this tap is the composite half
  
    captureService->Complete(request, result);
+diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.h b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.h
+index d516563..c7bc246 100644
+--- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.h
++++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.h
+@@ -138,6 +138,14 @@ private:
+   void          SetVideoBrightness(const int brightness);
+   void          SetVideoSaturation(const int saturation);
+   bool          OpenAmlVideo(const CDVDStreamInfo &hints);
++public:
++  //! Dolby Vision without a compatible base layer (profile 5, IPT-PQ-c2)
++  bool          IsDoviWithoutCompatibleBase() const
++  {
++    return m_hints.hdrType == StreamHdrType::HDR_TYPE_DOLBYVISION && m_hints.dovi.dv_profile &&
++           m_hints.dovi.dv_bl_signal_compatibility_id == 0;
++  }
++private:
+   void          CloseAmlVideo();
+   std::string   GetVfmMap(const std::string &name);
+   void          SetVfmMap(const std::string &name, const std::string &map);
 diff --git a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererAML.cpp b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererAML.cpp
-index 789dcb6..108ecb7 100644
+index 789dcb6..85199ea 100644
 --- a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererAML.cpp
 +++ b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererAML.cpp
 @@ -17,6 +17,8 @@
@@ -121,7 +155,7 @@ index 789dcb6..108ecb7 100644
    static_cast<CWinSystemAmlogic*>(CServiceBroker::GetWinSystem())
        ->ReleaseHdrGuiSession(m_hdrGuiOwner);
  }
-@@ -66,6 +68,23 @@ bool CRendererAML::Configure(const VideoPicture &picture, float fps, unsigned in
+@@ -66,6 +68,28 @@ bool CRendererAML::Configure(const VideoPicture &picture, float fps, unsigned in
               GetFlagsColorPrimaries(picture.color_primaries) |
               GetFlagsStereoMode(picture.stereoMode);
  
@@ -141,11 +175,16 @@ index 789dcb6..108ecb7 100644
 +  m_videoColor.displayMetadata = picture.displayMetadata;
 +  m_videoColor.hasLightMetadata = picture.hasLightMetadata;
 +  m_videoColor.lightMetadata = picture.lightMetadata;
++  // Dolby Vision profile 5 reads back as its IPT base layer: keep it out of captures
++  // (a bookmark thumbnail then comes from the file, rebuilt from the RPU)
++  if (const auto* amli = dynamic_cast<const CAMLVideoBuffer*>(picture.videoBuffer);
++      amli && amli->m_amlCodec)
++    m_videoColor.capturable = !amli->m_amlCodec->IsDoviWithoutCompatibleBase();
 +
    // Calculate the input frame aspect ratio.
    CalculateFrameAspectRatio(picture.iDisplayWidth, picture.iDisplayHeight);
    SetViewMode(m_videoSettings.m_ViewMode);
-@@ -271,7 +290,7 @@ std::shared_ptr<CAMLCodec> CRendererAML::QueueFrame(int index, bool setVideoRect
+@@ -271,7 +295,7 @@ std::shared_ptr<CAMLCodec> CRendererAML::QueueFrame(int index, bool setVideoRect
  void CRendererAML::RenderUpdate(int index, int index2, bool clear, unsigned int flags, unsigned int alpha)
  {
    ManageRenderArea();
@@ -154,7 +193,7 @@ index 789dcb6..108ecb7 100644
  
    if (m_vsyncPresent)
    {
-@@ -378,19 +397,26 @@ bool CRendererAML::CaptureVideoFrame(const KODI::RENDERING::CAPTURE::CaptureSpec
+@@ -378,19 +402,26 @@ bool CRendererAML::CaptureVideoFrame(const KODI::RENDERING::CAPTURE::CaptureSpec
        spec.width ? spec.width : static_cast<unsigned int>(std::lround(m_destRect.Width()));
    const unsigned int height =
        spec.height ? spec.height : static_cast<unsigned int>(std::lround(m_destRect.Height()));
@@ -316,7 +355,7 @@ index 623b38f..9852088 100644
    if (!lock.data())
    {
 diff --git a/xbmc/utils/ScreenshotAML.cpp b/xbmc/utils/ScreenshotAML.cpp
-index 05610c5..285eec8 100644
+index 05610c5..3705543 100644
 --- a/xbmc/utils/ScreenshotAML.cpp
 +++ b/xbmc/utils/ScreenshotAML.cpp
 @@ -11,6 +11,7 @@
@@ -448,7 +487,7 @@ index 05610c5..285eec8 100644
  }
  
  inline void Store16(uint8_t* p, unsigned int v)
-@@ -94,63 +156,89 @@ inline void Store16(uint8_t* p, unsigned int v)
+@@ -94,63 +156,94 @@ inline void Store16(uint8_t* p, unsigned int v)
    p[1] = static_cast<uint8_t>(v >> 8);
  }
  
@@ -564,10 +603,15 @@ index 05610c5..285eec8 100644
    if (width == 0 || height == 0)
 -    return {};
 +    return frame;
++  if (!GetVideoColor().capturable)
++  {
++    CLog::Log(LOGINFO, "CScreenshotAML: Dolby Vision profile 5 video is not captured");
++    return frame;
++  }
  
    // the driver works in whole 16-pixel groups and even line counts: capture
    // at the next such size and pick the requested grid out of it
-@@ -160,11 +248,12 @@ std::unique_ptr<uint8_t[]> CScreenshotAML::CaptureVideoFrame(unsigned int width,
+@@ -160,11 +253,12 @@ std::unique_ptr<uint8_t[]> CScreenshotAML::CaptureVideoFrame(unsigned int width,
    const unsigned int capHeight = std::min(CAPTURE_MAX_HEIGHT, (height + 1) & ~1u);
  
    std::vector<uint8_t> bgr;
@@ -584,7 +628,7 @@ index 05610c5..285eec8 100644
    for (unsigned int y = 0; y < height; ++y)
    {
      const uint8_t* row =
-@@ -178,14 +267,38 @@ std::unique_ptr<uint8_t[]> CScreenshotAML::CaptureVideoFrame(unsigned int width,
+@@ -178,14 +272,38 @@ std::unique_ptr<uint8_t[]> CScreenshotAML::CaptureVideoFrame(unsigned int width,
        out[3] = 255;
      }
    }
@@ -627,7 +671,7 @@ index 05610c5..285eec8 100644
  
    CRect dest = GetVideoRect();
    dest.Intersect(CRect(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height)));
-@@ -194,42 +307,123 @@ void CScreenshotAML::BlendVideoUnderGui(
+@@ -194,42 +312,123 @@ void CScreenshotAML::BlendVideoUnderGui(
    const unsigned int x1 = std::min(width, static_cast<unsigned int>(std::lround(dest.x2)));
    const unsigned int y1 = std::min(height, static_cast<unsigned int>(std::lround(dest.y2)));
    if (x1 <= x0 || y1 <= y0)
@@ -769,7 +813,7 @@ index 05610c5..285eec8 100644
 +  return videoColor;
 +}
 diff --git a/xbmc/utils/ScreenshotAML.h b/xbmc/utils/ScreenshotAML.h
-index 4fe69e3..30f5b60 100644
+index 4fe69e3..0934852 100644
 --- a/xbmc/utils/ScreenshotAML.h
 +++ b/xbmc/utils/ScreenshotAML.h
 @@ -8,6 +8,7 @@
@@ -780,7 +824,7 @@ index 4fe69e3..30f5b60 100644
  #include "utils/Geometry.h"
  
  #include <cstdint>
-@@ -15,26 +16,58 @@
+@@ -15,26 +16,61 @@
  
  extern "C"
  {
@@ -797,6 +841,9 @@ index 4fe69e3..30f5b60 100644
 +  AVMasteringDisplayMetadata displayMetadata{};
 +  bool hasLightMetadata{false};
 +  AVContentLightMetadata lightMetadata{};
++  //! false for Dolby Vision profile 5: the layer holds its IPT base layer, which
++  //! reads back green and purple, so captures leave the video out
++  bool capturable{true};
 +};
 +
 +//! A picture read from the video layer.
