@@ -3,8 +3,8 @@
 # Copyright (C) 2017-present Team LibreELEC (https://libreelec.tv)
 
 PKG_NAME="kodi"
-PKG_VERSION="22.0rc1-Piers"
-PKG_SHA256="21daa839b978ff3fc6a7a058717fe9232f1ae4087d492b31c288eeffb2a7a447"
+PKG_VERSION="22.0rc2-Piers"
+PKG_SHA256="e704ca70bcccd41baf409f6d54119add52a03f34e6eea3f11c6304f1553b4397"
 PKG_LICENSE="GPL-2.0-or-later"
 PKG_SITE="http://www.kodi.tv"
 PKG_URL="https://github.com/xbmc/xbmc/archive/${PKG_VERSION}.tar.gz"

@@ -3,7 +3,7 @@
 # Copyright (C) 2018-present Team LibreELEC (https://libreelec.tv)
 
 echo "Supported keys:
-← ↑ ↓ →         Left | Up | Down | Right
+← ↑ ↓ →         Left | Up | Down | Right (seek during playback)
 Context Menu    c
 Player Debug    d
 Fullscreen      f
@@ -13,6 +13,7 @@ Pause           p
 Screenshot      s
 Skin Debug      t
 Stop            x
+Mute            m
 Volume Down     -
 Volume Up       +
 Back            Backspace
@@ -25,17 +26,23 @@ com() {
   echo -ne "\r${1}\e[K";
 }
 
+btn() {
+  kodi-send --button="$1" >/dev/null 2>&1
+  echo -ne "\r$1\e[K"
+}
+
 while true; do
   read -r -sn1 k
   case "${k}" in
-    A) com "Up";;
-    B) com "Down";;
-    C) com "Right";;
-    D) com "Left";;
+    A) btn "up";;
+    B) btn "down";;
+    C) btn "right";;
+    D) btn "left";;
     c) com "ContextMenu";;
     d) com "PlayerDebug";;
     f) com "FullScreen";;
     i) com "Info";;
+    m) com "Mute";;
     o) com "CodecInfo";;
     p) com "Pause";;
     s) com "TakeScreenshot";;

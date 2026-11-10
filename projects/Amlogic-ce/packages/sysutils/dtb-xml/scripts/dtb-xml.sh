@@ -189,8 +189,11 @@ function update_migrated_xml() {
               continue 2
             fi
             ;;
+          c)
+            fdtget $amlogic_dt_id $dtb_file $cmd_path >/dev/null 2>&1 || continue 2
+            ;;
           d|r)
-            [ -n "$(fdtget $amlogic_dt_id $dtb_file $cmd_path 2>/dev/null)" ] && continue 2
+            fdtget $amlogic_dt_id $dtb_file $cmd_path >/dev/null 2>&1 && continue 2
             ;;
       esac
     done
@@ -280,8 +283,12 @@ function migrate_dtb_to_xml() {
                 continue 2
               fi
               ;;
+            c)
+              fdtget $amlogic_dt_id $dtb_file $cmd_path >/dev/null 2>&1 || continue 2
+              ;;
             d|r)
-              [ -z "$(fdtget $amlogic_dt_id $dtb_file $cmd_path 2>/dev/null)" -a -n "$cmd_remove_exist" ] || continue 2
+              fdtget $amlogic_dt_id $dtb_file $cmd_path >/dev/null 2>&1 && continue 2
+              [ -n "$cmd_remove_exist" ] || continue 2
               ;;
       esac
       done
@@ -421,6 +428,13 @@ function update_dtb_by_dtb_xml() {
               cmd="fdtput $amlogic_dt_id $cmd_type $dtb_file $cmd_path $cmd_value"
               cmd_value="${cmd_value//\"}"
               [ -n "$cmd_value" ] && cmd_value=${cmd_value#"0x"}
+              # a placeholder of the default dtb.xml is set by its own script, never by eval
+              case "$cmd_value" in
+                *'${'*)
+                  log " cmd[$cnt]: skipped, $cmd_path: unresolved '$cmd_value'"
+                  continue
+                  ;;
+              esac
               # check if dtb.img value does match with current BOOT_ROOT dtb.xml status
               if [ "$act_value" != "$cmd_value" -o -z "$act_value" -a -z "$cmd_value" ]; then
                 eval $cmd
