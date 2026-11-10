@@ -11,8 +11,8 @@ file could start. End the drain after 2 s without a picture.
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
 
-  xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp | 10 ++++++++++
-  1 file changed, 10 insertions(+)
+ xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp
 index 76ef50a..9edb316 100644

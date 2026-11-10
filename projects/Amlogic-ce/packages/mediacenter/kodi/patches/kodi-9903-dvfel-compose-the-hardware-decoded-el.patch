@@ -23,21 +23,21 @@ costs CPU. The Dolby Vision core still gets the converted no-op RPU.
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
 
-  .../VideoPlayer/DVDCodecs/Video/AMLDvFel.cpp  | 162 ++++++++++++++++--
-  .../VideoPlayer/DVDCodecs/Video/AMLDvFel.h    |  27 ++-
-  .../DVDCodecs/Video/DVDVideoCodecAmlogic.cpp  |  66 ++++++-
-  .../VideoPlayer/DVDCodecs/Video/dvfel_uapi.h  |  17 ++
-  .../VideoPlayer/DVDCodecs/Video/felgpu.c      |  56 +++++-
-  .../VideoPlayer/DVDCodecs/Video/felgpu.h      |   5 +
-  xbmc/utils/BitstreamConverter.cpp             |   6 +-
-  xbmc/utils/BitstreamConverter.h               |   5 +
-  8 files changed, 313 insertions(+), 31 deletions(-)
+ .../cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.cpp | 162 ++++++++++++++++++---
+ xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.h  |  27 +++-
+ .../DVDCodecs/Video/DVDVideoCodecAmlogic.cpp       |  66 ++++++++-
+ .../cores/VideoPlayer/DVDCodecs/Video/dvfel_uapi.h |  17 +++
+ xbmc/cores/VideoPlayer/DVDCodecs/Video/felgpu.c    |  56 ++++++-
+ xbmc/cores/VideoPlayer/DVDCodecs/Video/felgpu.h    |   5 +
+ xbmc/utils/BitstreamConverter.cpp                  |   6 +-
+ xbmc/utils/BitstreamConverter.h                    |   5 +
+ 8 files changed, 313 insertions(+), 31 deletions(-)
 
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.cpp
-index 8c7ef23..cf204ee 100644
+index ebf45c9..ae3bf05 100644
 --- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.cpp
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.cpp
-@@ -54,7 +54,12 @@ constexpr int EL_WAIT_MS = 80;         // wait for the EL frame of a job (the ke
+@@ -55,7 +55,12 @@ constexpr int EL_WAIT_MS = 80;         // wait for the EL frame of a job (the ke
  constexpr int64_t EL_LEAD_US = 350000;
  constexpr size_t MAX_EL_FRAMES = 24;   // decoded EL frames kept (6 MB each at 4K)
  constexpr size_t MAX_EL_QUEUE = 400;   // compressed EL packets
@@ -50,7 +50,7 @@ index 8c7ef23..cf204ee 100644
  
  void WriteSysfs(const char* path, const std::string& value)
  {
-@@ -275,6 +280,13 @@ bool CAMLDvFel::IsAvailable()
+@@ -276,6 +281,13 @@ bool CAMLDvFel::IsAvailable()
    return access(DVFEL_DEV, R_OK | W_OK) == 0;
  }
  
@@ -64,7 +64,7 @@ index 8c7ef23..cf204ee 100644
  void CAMLDvFel::RouteThroughDvfel(bool enable)
  {
    // non Dolby Vision decoding builds its map from vdec_vfm_path, Dolby Vision
-@@ -283,9 +295,15 @@ void CAMLDvFel::RouteThroughDvfel(bool enable)
+@@ -284,9 +296,15 @@ void CAMLDvFel::RouteThroughDvfel(bool enable)
    WriteSysfs("/sys/class/vfm/map", "rm dvblpath");
    WriteSysfs("/sys/class/vfm/map", enable ? "add dvblpath dvbldec dvfel amlvideo deinterlace amvideo"
                                            : "add dvblpath dvbldec amlvideo deinterlace amvideo");
@@ -81,7 +81,7 @@ index 8c7ef23..cf204ee 100644
  {
    if (m_started)
      return true;
-@@ -294,8 +312,10 @@ bool CAMLDvFel::Start(int width, int height)
+@@ -295,8 +313,10 @@ bool CAMLDvFel::Start(int width, int height)
  
    m_width = width;
    m_height = height;
@@ -92,7 +92,7 @@ index 8c7ef23..cf204ee 100644
  
    std::promise<bool> ready;
    std::future<bool> ok = ready.get_future();
-@@ -306,11 +326,13 @@ bool CAMLDvFel::Start(int width, int height)
+@@ -307,11 +327,13 @@ bool CAMLDvFel::Start(int width, int height)
      CLog::Log(LOGERROR, "CAMLDvFel: GPU compositor failed to start, FEL composition disabled");
      return false;
    }
@@ -108,7 +108,7 @@ index 8c7ef23..cf204ee 100644
    return true;
  }
  
-@@ -342,6 +364,8 @@ void CAMLDvFel::Stop()
+@@ -343,6 +365,8 @@ void CAMLDvFel::Stop()
      av_frame_free(&f.second.frame);
    m_elFrames.clear();
    m_elQueue.clear();
@@ -117,7 +117,7 @@ index 8c7ef23..cf204ee 100644
    m_started = false;
  }
  
-@@ -350,8 +374,11 @@ void CAMLDvFel::Reset()
+@@ -351,8 +375,11 @@ void CAMLDvFel::Reset()
    std::lock_guard<std::mutex> lock(m_lock);
    m_elQueue.clear();
    m_elQueue.push_back({0, {}, nullptr, true});
@@ -129,7 +129,7 @@ index 8c7ef23..cf204ee 100644
    m_pendingRpu.clear();
    m_pendingEl.clear();
    m_elCond.notify_all();
-@@ -369,19 +396,22 @@ void CAMLDvFel::OnDoviElNal(const uint8_t* nal, uint32_t size)
+@@ -370,19 +397,22 @@ void CAMLDvFel::OnDoviElNal(const uint8_t* nal, uint32_t size)
    m_pendingEl.insert(m_pendingEl.end(), nal, nal + size);
  }
  
@@ -154,7 +154,7 @@ index 8c7ef23..cf204ee 100644
    // the decoder reports the packet pts truncated to microseconds
    const int64_t key = static_cast<int64_t>(pts);
  
-@@ -392,7 +422,21 @@ void CAMLDvFel::CommitPacket(double pts)
+@@ -393,7 +423,21 @@ void CAMLDvFel::CommitPacket(double pts)
      m_lastMeta = meta;
  
    std::lock_guard<std::mutex> lock(m_lock);
@@ -177,7 +177,7 @@ index 8c7ef23..cf204ee 100644
    {
      m_elQueue.push_back({key, std::move(m_pendingEl), meta, false});
      m_elCond.notify_all();
-@@ -626,6 +670,40 @@ bool CAMLDvFel::WaitForFrame(int64_t pts, AVFrame*& frame, std::shared_ptr<felgp
+@@ -627,6 +671,40 @@ bool CAMLDvFel::WaitForFrame(int64_t pts, AVFrame*& frame, std::shared_ptr<felgp
    return frame != nullptr;
  }
  
@@ -218,7 +218,7 @@ index 8c7ef23..cf204ee 100644
  void CAMLDvFel::GpuThread(std::promise<bool> ready)
  {
    bool announced = false;
-@@ -642,20 +720,22 @@ void CAMLDvFel::GpuThread(std::promise<bool> ready)
+@@ -643,20 +721,22 @@ void CAMLDvFel::GpuThread(std::promise<bool> ready)
    EGLContext ctx = EGL_NO_CONTEXT;
    struct felgpu* fel = nullptr;
    dvfel_reg_bufs reg{};
@@ -246,7 +246,7 @@ index 8c7ef23..cf204ee 100644
                             EGL_NONE};
      EGLImageKHR img = createImage(dpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, attr);
      if (img == EGL_NO_IMAGE_KHR)
-@@ -719,6 +799,8 @@ void CAMLDvFel::GpuThread(std::promise<bool> ready)
+@@ -720,6 +800,8 @@ void CAMLDvFel::GpuThread(std::promise<bool> ready)
      reg.width = m_width;
      reg.height = m_height;
      reg.count = GPU_BUFFERS;
@@ -255,7 +255,7 @@ index 8c7ef23..cf204ee 100644
      bool ok = true;
      for (int i = 0; i < GPU_BUFFERS && ok; i++)
      {
-@@ -733,10 +815,23 @@ void CAMLDvFel::GpuThread(std::promise<bool> ready)
+@@ -734,10 +816,23 @@ void CAMLDvFel::GpuThread(std::promise<bool> ready)
        }
        if (ok)
        {
@@ -281,7 +281,7 @@ index 8c7ef23..cf204ee 100644
        if (ok)
        {
          glGenFramebuffers(1, &fout[i]);
-@@ -813,10 +908,35 @@ void CAMLDvFel::GpuThread(std::promise<bool> ready)
+@@ -814,10 +909,35 @@ void CAMLDvFel::GpuThread(std::promise<bool> ready)
  
        AVFrame* el = nullptr;
        std::shared_ptr<felgpu_meta> meta;
@@ -319,7 +319,7 @@ index 8c7ef23..cf204ee 100644
          {
            DumpFrame(el, *meta);
            CLog::Log(LOGINFO, "CAMLDvFel: dumped EL frame pts {} (EL frame pts {})", dumpPts, el->pts);
-@@ -826,9 +946,12 @@ void CAMLDvFel::GpuThread(std::promise<bool> ready)
+@@ -827,9 +947,12 @@ void CAMLDvFel::GpuThread(std::promise<bool> ready)
            felgpu_set_meta(fel, meta.get());
            current = meta;
          }
@@ -335,7 +335,7 @@ index 8c7ef23..cf204ee 100644
          felgpu_run(fel, tin[job.buf], fout[job.buf]);
          glFinish();
          m_gpuMsSum += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
-@@ -856,6 +979,7 @@ void CAMLDvFel::GpuThread(std::promise<bool> ready)
+@@ -857,6 +980,7 @@ void CAMLDvFel::GpuThread(std::promise<bool> ready)
      glDeleteFramebuffers(GPU_BUFFERS, fout);
      glDeleteTextures(GPU_BUFFERS, tin);
      glDeleteTextures(GPU_BUFFERS, tout);
@@ -343,7 +343,7 @@ index 8c7ef23..cf204ee 100644
      for (int i = 0; i < nimg; i++)
        destroyImage(dpy, images[i]);
      eglMakeCurrent(dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-@@ -869,6 +993,8 @@ void CAMLDvFel::GpuThread(std::promise<bool> ready)
+@@ -870,6 +994,8 @@ void CAMLDvFel::GpuThread(std::promise<bool> ready)
        close(reg.in_fd[i]);
      if (reg.out_fd[i] > 0)
        close(reg.out_fd[i]);
@@ -353,10 +353,10 @@ index 8c7ef23..cf204ee 100644
    if (heap >= 0)
      close(heap);
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.h b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.h
-index eb6264f..25b6582 100644
+index f902e41..b550671 100644
 --- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.h
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLDvFel.h
-@@ -52,10 +52,16 @@ public:
+@@ -53,10 +53,16 @@ public:
  
    // the dvfel kernel node is loaded
    static bool IsAvailable();
@@ -374,7 +374,7 @@ index eb6264f..25b6582 100644
    void Stop();
    bool IsStarted() const { return m_started; }
  
-@@ -64,8 +70,9 @@ public:
+@@ -65,8 +71,9 @@ public:
  
    // the data collected by the sink belongs to the packet with this pts
    void CommitPacket(double pts);
@@ -386,7 +386,7 @@ index eb6264f..25b6582 100644
  
    // IDoviElSink
    void OnDoviRpu(const uint8_t* nal, uint32_t size) override;
-@@ -88,11 +95,15 @@ private:
+@@ -89,11 +96,15 @@ private:
    void ElThread();
    void GpuThread(std::promise<bool> ready);
    bool WaitForFrame(int64_t pts, AVFrame*& frame, std::shared_ptr<felgpu_meta>& meta);
@@ -402,7 +402,7 @@ index eb6264f..25b6582 100644
    std::atomic<bool> m_stop{false};
  
    // per packet, filled by the sink (decode thread)
-@@ -105,8 +116,18 @@ private:
+@@ -106,8 +117,18 @@ private:
    std::condition_variable m_readyCond; // new EL frame
    std::deque<ElPacket> m_elQueue;
    std::map<int64_t, ElFrame> m_elFrames; // by display pts
@@ -422,7 +422,7 @@ index eb6264f..25b6582 100644
    std::thread m_elThread;
    std::thread m_gpuThread;
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.cpp
-index f319870..253bd00 100644
+index 166a2bf..ebf46c9 100644
 --- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.cpp
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.cpp
 @@ -7,6 +7,8 @@
@@ -475,7 +475,7 @@ index f319870..253bd00 100644
  CAMLVideoBufferPool::~CAMLVideoBufferPool()
  {
    CLog::Log(LOGDEBUG, "CAMLVideoBufferPool::~CAMLVideoBufferPool: Deleting {:d} buffers", static_cast<unsigned int>(m_videoBuffers.size()) );
-@@ -361,6 +397,10 @@ bool CDVDVideoCodecAmlogic::Open(CDVDStreamInfo &hints, CDVDCodecOptions &option
+@@ -377,6 +413,10 @@ bool CDVDVideoCodecAmlogic::Open(CDVDStreamInfo &hints, CDVDCodecOptions &option
            {
              m_dvFel = std::make_unique<CAMLDvFel>();
              m_bitstream->SetDoviElSink(m_dvFel.get());
@@ -486,7 +486,7 @@ index f319870..253bd00 100644
            }
          }
        }
-@@ -680,11 +720,27 @@ bool CDVDVideoCodecAmlogic::AddData(const DemuxPacket &packet)
+@@ -653,11 +693,27 @@ bool CDVDVideoCodecAmlogic::AddData(const DemuxPacket &packet)
        m_processInfo.SetDoviIsFEL(doviIsFEL);
        m_processInfo.SetIsHdr10Plus(IsHdr10Plus);
  
@@ -516,7 +516,7 @@ index f319870..253bd00 100644
        }
        if (m_dvFel)
          m_streamMeta.flags.push_back("fel-composed");
-@@ -731,9 +787,11 @@ bool CDVDVideoCodecAmlogic::AddData(const DemuxPacket &packet)
+@@ -704,9 +760,11 @@ bool CDVDVideoCodecAmlogic::AddData(const DemuxPacket &packet)
    {
      if (data_added && packet.pData && !m_hints.ptsinvalid && blPts != DVD_NOPTS_VALUE &&
          elPts != DVD_NOPTS_VALUE)
@@ -531,10 +531,10 @@ index f319870..253bd00 100644
  
    if (data_added && packet.pData)
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/dvfel_uapi.h b/xbmc/cores/VideoPlayer/DVDCodecs/Video/dvfel_uapi.h
-index 91c6636..f9482a3 100644
+index 596dd2f..2560da6 100644
 --- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/dvfel_uapi.h
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/dvfel_uapi.h
-@@ -17,6 +17,11 @@
+@@ -18,6 +18,11 @@
   * In in[buf], chroma at even x and even y is the original 4:2:0 sample; odd
   * positions are interpolated. dvfel converts out[buf] back to 4:2:0 by
   * keeping the chroma at even x/y.
@@ -546,7 +546,7 @@ index 91c6636..f9482a3 100644
   */
  #ifndef _UAPI_DVFEL_H
  #define _UAPI_DVFEL_H
-@@ -34,9 +39,13 @@ struct dvfel_reg_bufs {
+@@ -35,9 +40,13 @@ struct dvfel_reg_bufs {
  	__u32 count;			/* 1..DVFEL_MAX_BUFS */
  	__s32 in_fd[DVFEL_MAX_BUFS];	/* dma-buf fds */
  	__s32 out_fd[DVFEL_MAX_BUFS];
@@ -560,7 +560,7 @@ index 91c6636..f9482a3 100644
  
  struct dvfel_job {
  	__u32 timeout_ms;		/* in: max wait */
-@@ -46,6 +55,14 @@ struct dvfel_job {
+@@ -47,6 +56,14 @@ struct dvfel_job {
  	__u32 height;			/* out */
  	__u32 flags;			/* out: DVFEL_JOB_* */
  	__u64 pts_us;			/* out: vframe pts_us64 (Kodi packet pts) */
@@ -576,10 +576,10 @@ index 91c6636..f9482a3 100644
  
  #define DVFEL_DONE_COMPOSED	0	/* out[buf] holds the frame */
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/felgpu.c b/xbmc/cores/VideoPlayer/DVDCodecs/Video/felgpu.c
-index f8ed5e7..d11e137 100644
+index f61be1e..882e4e0 100644
 --- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/felgpu.c
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/felgpu.c
-@@ -32,6 +32,8 @@ struct felgpu {
+@@ -38,6 +38,8 @@ struct felgpu {
      GLuint p_vert1, p_vert2, p_chroma, p_luma;
      GLuint el_y, el_cb, el_cr;      /* uploaded EL planes, R16UI */
      GLuint el_yv, el_cv;            /* vertically upsampled, R32F / RG32F */
@@ -588,7 +588,7 @@ index f8ed5e7..d11e137 100644
      GLuint fbo_yv, fbo_cv;
      GLuint chroma, fbo_chroma;      /* composed 4:2:0 chroma, RG16UI */
      GLuint lut;                     /* R32F LUT_W x LUT_ROWS */
-@@ -133,6 +135,30 @@ struct felgpu {
+@@ -139,6 +141,30 @@ struct felgpu {
      "  return clamp(floor(acc + 0.5), 0.0, el_max);\n" \
      "}\n"
  
@@ -619,7 +619,7 @@ index f8ed5e7..d11e137 100644
  static const char *vs_src =
      "#version 320 es\n"
      "void main() {\n"
-@@ -504,7 +530,10 @@ struct felgpu *felgpu_create(int w, int h, int taps)
+@@ -510,7 +536,10 @@ struct felgpu *felgpu_create(int w, int h, int taps)
      f->p_vert2 = program(fs_el_vert2, taps);
      f->p_chroma = program(fs_chroma, taps);
      f->p_luma = program(fs_luma, taps);
@@ -631,7 +631,7 @@ index f8ed5e7..d11e137 100644
          free(f);
          return NULL;
      }
-@@ -525,6 +554,15 @@ struct felgpu *felgpu_create(int w, int h, int taps)
+@@ -531,6 +560,15 @@ struct felgpu *felgpu_create(int w, int h, int taps)
      f->fbo_yv = make_fbo(f->el_yv);
      f->fbo_cv = make_fbo(f->el_cv);
      f->fbo_chroma = make_fbo(f->chroma);
@@ -647,7 +647,7 @@ index f8ed5e7..d11e137 100644
  
      /* EL sample phase: centered 2x (see fel_compose.c); chroma top-left sited */
      const double ce = 0.5;
-@@ -540,9 +578,11 @@ void felgpu_destroy(struct felgpu *f)
+@@ -546,9 +584,11 @@ void felgpu_destroy(struct felgpu *f)
      if (!f)
          return;
      GLuint tex[] = { f->el_y, f->el_cb, f->el_cr, f->el_yv, f->el_cv, f->chroma, f->lut, f->dither };
@@ -661,7 +661,7 @@ index f8ed5e7..d11e137 100644
      glDeleteProgram(f->p_vert1);
      glDeleteProgram(f->p_vert2);
      glDeleteProgram(f->p_chroma);
-@@ -566,6 +606,16 @@ void felgpu_set_el(struct felgpu *f, const uint16_t *y, int y_stride,
+@@ -572,6 +612,16 @@ void felgpu_set_el(struct felgpu *f, const uint16_t *y, int y_stride,
      glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
  }
  
@@ -679,10 +679,10 @@ index f8ed5e7..d11e137 100644
  {
      int n = m->npiv[c], k = 0;
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/felgpu.h b/xbmc/cores/VideoPlayer/DVDCodecs/Video/felgpu.h
-index 4dfa143..bced3f1 100644
+index f5fcdaf..a983e49 100644
 --- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/felgpu.h
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/felgpu.h
-@@ -51,6 +51,11 @@ void felgpu_destroy(struct felgpu *f);
+@@ -57,6 +57,11 @@ void felgpu_destroy(struct felgpu *f);
  /* EL planes, yuv420p10 (16-bit samples), strides in samples */
  void felgpu_set_el(struct felgpu *f, const uint16_t *y, int y_stride,
                     const uint16_t *cb, const uint16_t *cr, int c_stride);
@@ -695,10 +695,10 @@ index 4dfa143..bced3f1 100644
  
  /* compose bl_tex (dma-buf import, RGBA8) into out_fbo (dma-buf, RGBA8) */
 diff --git a/xbmc/utils/BitstreamConverter.cpp b/xbmc/utils/BitstreamConverter.cpp
-index 2ed0bd6..bae94fa 100644
+index 6caaee3..ab18529 100644
 --- a/xbmc/utils/BitstreamConverter.cpp
 +++ b/xbmc/utils/BitstreamConverter.cpp
-@@ -680,7 +680,7 @@ bool CBitstreamConverter::Convert(uint8_t* pData, int iSize)
+@@ -702,7 +702,7 @@ bool CBitstreamConverter::Convert(uint8_t* pData, int iSize)
                }
                else
                {
@@ -707,7 +707,7 @@ index 2ed0bd6..bae94fa 100644
                    BitstreamAllocAndCopy(&m_convertBuffer, &offset, buf, size, nal_type);
                  else
                    SinkElNal63(buf, size);
-@@ -915,7 +915,7 @@ bool CBitstreamConverter::Convert(uint8_t *pData_bl, int iSize_bl, uint8_t *pDat
+@@ -940,7 +940,7 @@ bool CBitstreamConverter::Convert(uint8_t *pData_bl, int iSize_bl, uint8_t *pDat
        }
        else
        {
@@ -716,7 +716,7 @@ index 2ed0bd6..bae94fa 100644
            BitstreamAllocAndCopy(&m_convertBuffer, &offset, buf, size, HEVC_NAL_UNSPEC63);
          else if (m_doviElSink)
            m_doviElSink->OnDoviElNal(buf, size); // raw EL NAL of the EL track
-@@ -1447,7 +1447,7 @@ bool CBitstreamConverter::BitstreamConvert(uint8_t* pData,
+@@ -1474,7 +1474,7 @@ bool CBitstreamConverter::BitstreamConvert(uint8_t* pData,
            }
  #endif
          }

@@ -16,12 +16,9 @@ screen with a playing trailer showed a frame at mean luma 18 between two at
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
+
  xbmc/windowing/GraphicContext.cpp | 27 ++++++++++++++++++++++++++-
  1 file changed, 26 insertions(+), 1 deletion(-)
-
-
-  xbmc/windowing/GraphicContext.cpp | 27 ++++++++++++++++++++++++++-
-  1 file changed, 26 insertions(+), 1 deletion(-)
 
 diff --git a/xbmc/windowing/GraphicContext.cpp b/xbmc/windowing/GraphicContext.cpp
 index 0249ce4..ee45faf 100644

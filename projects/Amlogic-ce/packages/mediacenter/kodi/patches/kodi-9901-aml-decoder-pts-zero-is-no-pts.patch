@@ -2,6 +2,9 @@
   .../VideoPlayer/DVDCodecs/Video/AMLCodec.cpp  | 24 +++++++++++++++++--
   1 file changed, 22 insertions(+), 2 deletions(-)
 
+ .../cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp | 24 ++++++++++++++++++++--
+ 1 file changed, 22 insertions(+), 2 deletions(-)
+
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp
 index dce7f6a..f32a633 100644
 --- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp

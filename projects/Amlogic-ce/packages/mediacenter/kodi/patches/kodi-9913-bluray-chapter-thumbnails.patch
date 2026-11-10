@@ -18,20 +18,20 @@ keyframe. Up to 400 video packets now count, within a large overall bound.
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
 
-  xbmc/application/ApplicationPlayer.cpp        |  8 ++++
-  xbmc/application/ApplicationPlayer.h          |  1 +
-  xbmc/cores/IPlayer.h                          |  6 +++
-  xbmc/cores/VideoPlayer/DVDFileInfo.cpp        | 10 ++++-
-  .../DVDInputStreams/DVDInputStreamBluray.cpp  | 17 +++++++
-  .../DVDInputStreams/DVDInputStreamBluray.h    |  2 +
-  xbmc/cores/VideoPlayer/VideoPlayer.cpp        | 44 +++++++++++++++++++
-  xbmc/cores/VideoPlayer/VideoPlayer.h          |  5 +++
-  xbmc/video/VideoGeneratedImageFileLoader.cpp  |  7 ++-
-  .../video/dialogs/GUIDialogVideoBookmarks.cpp | 19 ++++++--
-  10 files changed, 113 insertions(+), 6 deletions(-)
+ xbmc/application/ApplicationPlayer.cpp             |  8 ++++
+ xbmc/application/ApplicationPlayer.h               |  1 +
+ xbmc/cores/IPlayer.h                               |  6 +++
+ xbmc/cores/VideoPlayer/DVDFileInfo.cpp             | 10 ++++-
+ .../DVDInputStreams/DVDInputStreamBluray.cpp       | 17 +++++++++
+ .../DVDInputStreams/DVDInputStreamBluray.h         |  2 +
+ xbmc/cores/VideoPlayer/VideoPlayer.cpp             | 44 ++++++++++++++++++++++
+ xbmc/cores/VideoPlayer/VideoPlayer.h               |  5 +++
+ xbmc/video/VideoGeneratedImageFileLoader.cpp       |  7 +++-
+ xbmc/video/dialogs/GUIDialogVideoBookmarks.cpp     | 19 ++++++++--
+ 10 files changed, 113 insertions(+), 6 deletions(-)
 
 diff --git a/xbmc/application/ApplicationPlayer.cpp b/xbmc/application/ApplicationPlayer.cpp
-index 2938369..2f9f985 100644
+index ddd9ded..6417161 100644
 --- a/xbmc/application/ApplicationPlayer.cpp
 +++ b/xbmc/application/ApplicationPlayer.cpp
 @@ -210,6 +210,14 @@ int64_t CApplicationPlayer::GetChapterPos(int chapterIdx) const
@@ -50,10 +50,10 @@ index 2938369..2f9f985 100644
  {
    const std::shared_ptr<const IPlayer> player = GetInternal();
 diff --git a/xbmc/application/ApplicationPlayer.h b/xbmc/application/ApplicationPlayer.h
-index 094c4d1..bce0242 100644
+index bc386c4..5ac20b4 100644
 --- a/xbmc/application/ApplicationPlayer.h
 +++ b/xbmc/application/ApplicationPlayer.h
-@@ -92,6 +92,7 @@ public:
+@@ -93,6 +93,7 @@ public:
    int GetChapter() const;
    void GetChapterName(std::string& strChapterName, int chapterIdx = -1) const;
    int64_t GetChapterPos(int chapterIdx = -1) const;
@@ -62,10 +62,10 @@ index 094c4d1..bce0242 100644
    std::string GetPlayerState();
    KODI::PLAYLIST::Id GetPreferredPlaylist() const;
 diff --git a/xbmc/cores/IPlayer.h b/xbmc/cores/IPlayer.h
-index 5f96bc3..f4c7f1f 100644
+index 19b5551..f56634b 100644
 --- a/xbmc/cores/IPlayer.h
 +++ b/xbmc/cores/IPlayer.h
-@@ -161,6 +161,12 @@ public:
+@@ -170,6 +170,12 @@ public:
    virtual int GetChapter() const { return -1; }
    virtual void GetChapterName(std::string& strChapterName, int chapterIdx = -1) const {}
    virtual int64_t GetChapterPos(int chapterIdx = -1) const { return 0; }
@@ -79,10 +79,10 @@ index 5f96bc3..f4c7f1f 100644
  //  virtual bool GetChapterInfo(int chapter, SChapterInfo &info) { return false; }
    virtual std::vector<std::chrono::milliseconds> GetBookmarks() const { return {}; }
 diff --git a/xbmc/cores/VideoPlayer/DVDFileInfo.cpp b/xbmc/cores/VideoPlayer/DVDFileInfo.cpp
-index 9ccddd6..96c2bd3 100644
+index 6f76e36..ebf7bff 100644
 --- a/xbmc/cores/VideoPlayer/DVDFileInfo.cpp
 +++ b/xbmc/cores/VideoPlayer/DVDFileInfo.cpp
-@@ -106,8 +106,13 @@ bool CDVDFileInfo::SeekAndDecodeFirstPicture(CDVDDemux& demuxer,
+@@ -112,8 +112,13 @@ bool CDVDFileInfo::SeekAndDecodeFirstPicture(CDVDDemux& demuxer,
  
    CDVDVideoCodec::VCReturn iDecoderState = CDVDVideoCodec::VC_NONE;
  
@@ -98,7 +98,7 @@ index 9ccddd6..96c2bd3 100644
    {
      DemuxPacket* pPacket = demuxer.Read();
      packetsTried++;
-@@ -120,6 +125,7 @@ bool CDVDFileInfo::SeekAndDecodeFirstPicture(CDVDDemux& demuxer,
+@@ -126,6 +131,7 @@ bool CDVDFileInfo::SeekAndDecodeFirstPicture(CDVDDemux& demuxer,
        CDVDDemuxUtils::FreeDemuxPacket(pPacket);
        continue;
      }
@@ -107,10 +107,10 @@ index 9ccddd6..96c2bd3 100644
      codec.AddData(*pPacket);
      CDVDDemuxUtils::FreeDemuxPacket(pPacket);
 diff --git a/xbmc/cores/VideoPlayer/DVDInputStreams/DVDInputStreamBluray.cpp b/xbmc/cores/VideoPlayer/DVDInputStreams/DVDInputStreamBluray.cpp
-index 9d9a671..78f4067 100644
+index 32f6b8c..148e970 100644
 --- a/xbmc/cores/VideoPlayer/DVDInputStreams/DVDInputStreamBluray.cpp
 +++ b/xbmc/cores/VideoPlayer/DVDInputStreams/DVDInputStreamBluray.cpp
-@@ -1041,6 +1041,23 @@ bool CDVDInputStreamBluray::PosTime(int ms)
+@@ -1202,6 +1202,23 @@ bool CDVDInputStreamBluray::PosTime(int ms)
    return true;
  }
  
@@ -135,10 +135,10 @@ index 9d9a671..78f4067 100644
  {
    if(m_titleInfo)
 diff --git a/xbmc/cores/VideoPlayer/DVDInputStreams/DVDInputStreamBluray.h b/xbmc/cores/VideoPlayer/DVDInputStreams/DVDInputStreamBluray.h
-index 1e1dda5..a29543a 100644
+index c7873f4..fa5e541 100644
 --- a/xbmc/cores/VideoPlayer/DVDInputStreams/DVDInputStreamBluray.h
 +++ b/xbmc/cores/VideoPlayer/DVDInputStreams/DVDInputStreamBluray.h
-@@ -124,6 +124,8 @@ public:
+@@ -125,6 +125,8 @@ public:
  
    int GetChapter() override;
    int GetChapterCount() override;
@@ -148,10 +148,10 @@ index 1e1dda5..a29543a 100644
    std::chrono::milliseconds GetChapterPos(int ch) override;
    bool SeekChapter(int ch) override;
 diff --git a/xbmc/cores/VideoPlayer/VideoPlayer.cpp b/xbmc/cores/VideoPlayer/VideoPlayer.cpp
-index e0e6a5f..29af05e 100644
+index 7e04571..d5c350e 100644
 --- a/xbmc/cores/VideoPlayer/VideoPlayer.cpp
 +++ b/xbmc/cores/VideoPlayer/VideoPlayer.cpp
-@@ -5550,6 +5550,35 @@ int64_t CVideoPlayer::GetChapterPos(int chapterIdx) const
+@@ -5759,6 +5759,35 @@ int64_t CVideoPlayer::GetChapterPos(int chapterIdx) const
    return -1;
  }
  
@@ -187,7 +187,7 @@ index e0e6a5f..29af05e 100644
  std::optional<std::chrono::milliseconds> CVideoPlayer::GetChapterPosMs(int chapterIdx) const
  {
    std::unique_lock lock(m_StateSection);
-@@ -5855,6 +5884,8 @@ void CVideoPlayer::UpdatePlayState(double timeout)
+@@ -6066,6 +6095,8 @@ void CVideoPlayer::UpdatePlayState(double timeout)
  
      state.chapters.clear();
      state.rawChapters.clear();
@@ -196,7 +196,7 @@ index e0e6a5f..29af05e 100644
      if (const int chapterCount = m_pDemuxer->GetChapterCount(); chapterCount > 0)
      {
        for (int i = 0, ie = chapterCount; i < ie; ++i)
-@@ -5872,6 +5903,12 @@ void CVideoPlayer::UpdatePlayState(double timeout)
+@@ -6083,6 +6114,12 @@ void CVideoPlayer::UpdatePlayState(double timeout)
          auto& p = state.chapters.emplace_back(std::string{}, m_Edl.GetTimeWithoutCuts(rawStart));
          m_pDemuxer->GetChapterName(p.first, i + 1);
          state.rawChapters.emplace_back(i + 1);
@@ -209,7 +209,7 @@ index e0e6a5f..29af05e 100644
        }
      }
  
-@@ -5921,6 +5958,8 @@ void CVideoPlayer::UpdatePlayState(double timeout)
+@@ -6128,6 +6165,8 @@ void CVideoPlayer::UpdatePlayState(double timeout)
      {
        state.chapters.clear();
        state.rawChapters.clear();
@@ -218,7 +218,7 @@ index e0e6a5f..29af05e 100644
        if (const int chapterCount = pChapter->GetChapterCount(); chapterCount > 0)
        {
          for (int i = 0, ie = chapterCount; i < ie; ++i)
-@@ -5934,6 +5973,11 @@ void CVideoPlayer::UpdatePlayState(double timeout)
+@@ -6141,6 +6180,11 @@ void CVideoPlayer::UpdatePlayState(double timeout)
            auto& p = state.chapters.emplace_back(std::string{}, m_Edl.GetTimeWithoutCuts(rawStart));
            pChapter->GetChapterName(p.first, i + 1);
            state.rawChapters.emplace_back(i + 1);
@@ -231,7 +231,7 @@ index e0e6a5f..29af05e 100644
        }
  
 diff --git a/xbmc/cores/VideoPlayer/VideoPlayer.h b/xbmc/cores/VideoPlayer/VideoPlayer.h
-index 535d2ce..8b40399 100644
+index fa76b91..767075c 100644
 --- a/xbmc/cores/VideoPlayer/VideoPlayer.h
 +++ b/xbmc/cores/VideoPlayer/VideoPlayer.h
 @@ -53,6 +53,7 @@ struct SPlayerState
@@ -252,7 +252,7 @@ index 535d2ce..8b40399 100644
    // position of the bookmarks
    std::vector<std::chrono::milliseconds> m_bookmarks;
  
-@@ -350,6 +354,7 @@ public:
+@@ -358,6 +362,7 @@ public:
    int GetChapter() const override;
    void GetChapterName(std::string& strChapterName, int chapterIdx = -1) const override;
    int64_t GetChapterPos(int chapterIdx = -1) const override; // chapter start ts in seconds

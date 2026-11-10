@@ -23,14 +23,10 @@ set_drmProp takes a uint64_t value: OUT_FENCE_PTR passes a pointer.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
- xbmc/windowing/amlogic/AMLDisplay.cpp | 187 +++++++++++++++-----------
- xbmc/windowing/amlogic/AMLDisplay.h   |  18 ++-
+
+ xbmc/windowing/amlogic/AMLDisplay.cpp | 187 +++++++++++++++++++---------------
+ xbmc/windowing/amlogic/AMLDisplay.h   |  18 +++-
  2 files changed, 123 insertions(+), 82 deletions(-)
-
-
-  xbmc/windowing/amlogic/AMLDisplay.cpp | 187 +++++++++++++++-----------
-  xbmc/windowing/amlogic/AMLDisplay.h   |  18 ++-
-  2 files changed, 123 insertions(+), 82 deletions(-)
 
 diff --git a/xbmc/windowing/amlogic/AMLDisplay.cpp b/xbmc/windowing/amlogic/AMLDisplay.cpp
 index 31378c5..26d858f 100644

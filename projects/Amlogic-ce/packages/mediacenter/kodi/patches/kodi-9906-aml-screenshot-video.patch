@@ -15,31 +15,19 @@ render captures) always failed: CScreenshotAML was no longer called anywhere.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
- .../HwDecRender/RendererAML.cpp               |  34 +++
- .../VideoRenderers/HwDecRender/RendererAML.h  |   4 +
- xbmc/utils/ScreenshotAML.cpp                  | 286 +++++++++++++-----
- xbmc/utils/ScreenshotAML.h                    |  31 +-
- xbmc/windowing/amlogic/CMakeLists.txt         |   6 +-
- .../amlogic/ScreenshotSurfaceAML.cpp          |  32 ++
- xbmc/windowing/amlogic/ScreenshotSurfaceAML.h |  24 ++
- xbmc/windowing/amlogic/WinSystemAmlogic.cpp   |   4 +-
+
+ .../VideoRenderers/HwDecRender/RendererAML.cpp     |  34 +++
+ .../VideoRenderers/HwDecRender/RendererAML.h       |   4 +
+ xbmc/utils/ScreenshotAML.cpp                       | 286 +++++++++++++++------
+ xbmc/utils/ScreenshotAML.h                         |  31 ++-
+ xbmc/windowing/amlogic/CMakeLists.txt              |   6 +-
+ xbmc/windowing/amlogic/ScreenshotSurfaceAML.cpp    |  32 +++
+ xbmc/windowing/amlogic/ScreenshotSurfaceAML.h      |  24 ++
+ xbmc/windowing/amlogic/WinSystemAmlogic.cpp        |   4 +-
  8 files changed, 334 insertions(+), 87 deletions(-)
- create mode 100644 xbmc/windowing/amlogic/ScreenshotSurfaceAML.cpp
- create mode 100644 xbmc/windowing/amlogic/ScreenshotSurfaceAML.h
-
-
-  .../HwDecRender/RendererAML.cpp               |  34 +++
-  .../VideoRenderers/HwDecRender/RendererAML.h  |   4 +
-  xbmc/utils/ScreenshotAML.cpp                  | 286 +++++++++++++-----
-  xbmc/utils/ScreenshotAML.h                    |  31 +-
-  xbmc/windowing/amlogic/CMakeLists.txt         |   6 +-
-  .../amlogic/ScreenshotSurfaceAML.cpp          |  32 ++
-  xbmc/windowing/amlogic/ScreenshotSurfaceAML.h |  24 ++
-  xbmc/windowing/amlogic/WinSystemAmlogic.cpp   |   4 +-
-  8 files changed, 334 insertions(+), 87 deletions(-)
 
 diff --git a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererAML.cpp b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererAML.cpp
-index 0e3ef8b..789dcb6 100644
+index c8a5952..609ca38 100644
 --- a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererAML.cpp
 +++ b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererAML.cpp
 @@ -13,6 +13,8 @@
@@ -69,7 +57,7 @@ index 0e3ef8b..789dcb6 100644
    static_cast<CWinSystemAmlogic*>(CServiceBroker::GetWinSystem())
        ->ReleaseHdrGuiSession(m_hdrGuiOwner);
  }
-@@ -265,6 +271,7 @@ std::shared_ptr<CAMLCodec> CRendererAML::QueueFrame(int index, bool setVideoRect
+@@ -267,6 +273,7 @@ std::shared_ptr<CAMLCodec> CRendererAML::QueueFrame(int index, bool setVideoRect
  void CRendererAML::RenderUpdate(int index, int index2, bool clear, unsigned int flags, unsigned int alpha)
  {
    ManageRenderArea();
@@ -77,9 +65,9 @@ index 0e3ef8b..789dcb6 100644
  
    if (m_vsyncPresent)
    {
-@@ -360,3 +367,30 @@ void CRendererAML::PresentFrame(int index)
-   std::lock_guard<std::mutex> lock(m_pendingGeometryLock);
+@@ -363,3 +370,30 @@ bool CRendererAML::PresentFrame(int index)
    m_pendingGeometry.swap(codec);
+   return true;
  }
 +
 +bool CRendererAML::CaptureVideoFrame(const KODI::RENDERING::CAPTURE::CaptureSpec& spec,
@@ -109,7 +97,7 @@ index 0e3ef8b..789dcb6 100644
 +  return true;
 +}
 diff --git a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererAML.h b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererAML.h
-index a0dab21..665267b 100644
+index 0935839..ae560cb 100644
 --- a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererAML.h
 +++ b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererAML.h
 @@ -51,6 +51,10 @@ public:
@@ -564,7 +552,7 @@ index 0000000..19f59cd
 +  bool Read(const ScreenshotContext& ctx) override;
 +};
 diff --git a/xbmc/windowing/amlogic/WinSystemAmlogic.cpp b/xbmc/windowing/amlogic/WinSystemAmlogic.cpp
-index f16c74d..d5de969 100644
+index 393dc87..ae7098a 100644
 --- a/xbmc/windowing/amlogic/WinSystemAmlogic.cpp
 +++ b/xbmc/windowing/amlogic/WinSystemAmlogic.cpp
 @@ -22,7 +22,7 @@

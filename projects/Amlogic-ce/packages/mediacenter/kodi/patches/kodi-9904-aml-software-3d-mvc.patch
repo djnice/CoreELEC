@@ -16,28 +16,28 @@ With it:
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
 
-  .../resources/strings.po                      |  12 +
-  cmake/modules/FindAML.cmake                   |  16 +-
-  system/settings/settings.xml                  |   6 +
-  .../VideoPlayer/DVDCodecs/Video/AMLCodec.cpp  | 182 +++++-
-  .../VideoPlayer/DVDCodecs/Video/AMLCodec.h    |  11 +
-  .../VideoPlayer/DVDCodecs/Video/AMLMvc.cpp    | 593 ++++++++++++++++++
-  .../VideoPlayer/DVDCodecs/Video/AMLMvc.h      | 119 ++++
-  .../DVDCodecs/Video/CMakeLists.txt            |   3 +
-  .../DVDCodecs/Video/DVDVideoCodecAmlogic.cpp  |   7 +
-  .../VideoPlayer/DVDCodecs/Video/mvcout_uapi.h |  62 ++
-  xbmc/guilib/StereoscopicsManager.cpp          |   5 +
-  xbmc/settings/SettingConditions.cpp           |   5 +
-  xbmc/settings/Settings.h                      |   1 +
-  xbmc/windowing/amlogic/AMLDisplay.cpp         |  46 +-
-  xbmc/windowing/amlogic/AMLDisplay.h           |   3 +
-  15 files changed, 1064 insertions(+), 7 deletions(-)
+ .../resource.language.en_gb/resources/strings.po   |  12 +
+ cmake/modules/FindAML.cmake                        |  16 +-
+ system/settings/settings.xml                       |   6 +
+ .../cores/VideoPlayer/DVDCodecs/Video/AMLCodec.cpp | 182 ++++++-
+ xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.h  |  11 +
+ xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLMvc.cpp  | 593 +++++++++++++++++++++
+ xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLMvc.h    | 119 +++++
+ .../VideoPlayer/DVDCodecs/Video/CMakeLists.txt     |   3 +
+ .../DVDCodecs/Video/DVDVideoCodecAmlogic.cpp       |   7 +
+ .../VideoPlayer/DVDCodecs/Video/mvcout_uapi.h      |  62 +++
+ xbmc/guilib/StereoscopicsManager.cpp               |   5 +
+ xbmc/settings/SettingConditions.cpp                |   5 +
+ xbmc/settings/Settings.h                           |   1 +
+ xbmc/windowing/amlogic/AMLDisplay.cpp              |  46 +-
+ xbmc/windowing/amlogic/AMLDisplay.h                |   3 +
+ 15 files changed, 1064 insertions(+), 7 deletions(-)
 
 diff --git a/addons/resource.language.en_gb/resources/strings.po b/addons/resource.language.en_gb/resources/strings.po
-index 7234287..61a27a8 100644
+index c3560f8..26833fd 100644
 --- a/addons/resource.language.en_gb/resources/strings.po
 +++ b/addons/resource.language.en_gb/resources/strings.po
-@@ -9173,6 +9173,18 @@ msgctxt "#14433"
+@@ -9185,6 +9185,18 @@ msgctxt "#14433"
  msgid "Compose the full enhancement layer of Dolby Vision profile 7 FEL titles on the GPU. When disabled, FEL titles play like MEL ones: converted to profile 8.1 without the enhancement layer. Takes effect when playback starts. S928X only."
  msgstr ""
  
@@ -91,10 +91,10 @@ index 7a9a2f1..bb0567e 100644
 -mark_as_advanced(AMLCODEC_INCLUDE_DIR)
 +mark_as_advanced(AMLCODEC_INCLUDE_DIR EDGE264_INCLUDE_DIR EDGE264_LIBRARY)
 diff --git a/system/settings/settings.xml b/system/settings/settings.xml
-index 1a0e782..1ccfff3 100755
+index 2b666a6..fddeb47 100755
 --- a/system/settings/settings.xml
 +++ b/system/settings/settings.xml
-@@ -4074,6 +4074,12 @@
+@@ -4123,6 +4123,12 @@
              <dependency type="enable" setting="coreelec.amlogic.dvfelenable">true</dependency>
            </dependencies>
          </setting>
@@ -1146,10 +1146,10 @@ index 4bdb078..5814ee3 100644
                        dvfel_uapi.h
                        felgpu.h)
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.cpp b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.cpp
-index 253bd00..a205677 100644
+index ebf46c9..e6a6d9f 100644
 --- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.cpp
 +++ b/xbmc/cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.cpp
-@@ -748,6 +748,13 @@ bool CDVDVideoCodecAmlogic::AddData(const DemuxPacket &packet)
+@@ -721,6 +721,13 @@ bool CDVDVideoCodecAmlogic::AddData(const DemuxPacket &packet)
        CLog::Log(LOGINFO, "CDVDVideoCodecAmlogic::{}: Open decoder: fps:{:d}/{:d}", __FUNCTION__, m_hints.fpsrate, m_hints.fpsscale);
        if (m_Codec && !m_Codec->OpenDecoder(m_hints, doviIsFEL))
          CLog::Log(LOGERROR, "CDVDVideoCodecAmlogic::{}: Failed to open Amlogic Codec", __FUNCTION__);
@@ -1248,7 +1248,7 @@ index 400b9b8..67f2a45 100644
  
    switch (playbackMode)
 diff --git a/xbmc/settings/SettingConditions.cpp b/xbmc/settings/SettingConditions.cpp
-index 16340f1..4dca011 100644
+index da0477c..b5270fe 100644
 --- a/xbmc/settings/SettingConditions.cpp
 +++ b/xbmc/settings/SettingConditions.cpp
 @@ -421,6 +421,11 @@ void CSettingConditions::Initialize()

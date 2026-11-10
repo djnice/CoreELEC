@@ -16,15 +16,12 @@ rotating disc, video layer hidden): before 25-27 double steps, after none.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
- xbmc/utils/TimeUtils.cpp | 41 ++++++++++++++++++++++++++++------------
+
+ xbmc/utils/TimeUtils.cpp | 41 +++++++++++++++++++++++++++++------------
  1 file changed, 29 insertions(+), 12 deletions(-)
 
-
-  xbmc/utils/TimeUtils.cpp | 41 ++++++++++++++++++++++++++++------------
-  1 file changed, 29 insertions(+), 12 deletions(-)
-
 diff --git a/xbmc/utils/TimeUtils.cpp b/xbmc/utils/TimeUtils.cpp
-index 649d66c..386cb53 100644
+index 649d66c..386cb53c 100644
 --- a/xbmc/utils/TimeUtils.cpp
 +++ b/xbmc/utils/TimeUtils.cpp
 @@ -22,9 +22,14 @@

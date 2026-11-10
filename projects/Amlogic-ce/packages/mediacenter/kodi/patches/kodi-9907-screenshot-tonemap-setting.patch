@@ -17,97 +17,55 @@ the video's HDR coding (PQ or HLG, BT.2020) and tags the PNG with it.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
- .../resources/strings.po                      |  14 +-
- system/settings/settings.xml                  |   5 +
- xbmc/application/Application.cpp              |   3 +-
- .../HwDecRender/RendererAML.cpp               |  44 ++-
- .../VideoRenderers/HwDecRender/RendererAML.h  |   2 +
- xbmc/settings/Settings.h                      |   1 +
- xbmc/utils/IScreenshotSurface.h               |  21 ++
- xbmc/utils/Screenshot.cpp                     |  26 ++
- xbmc/utils/ScreenshotAML.cpp                  | 320 ++++++++++++++----
- xbmc/utils/ScreenshotAML.h                    |  49 ++-
- .../amlogic/ScreenshotSurfaceAML.cpp          |  19 +-
- 11 files changed, 420 insertions(+), 84 deletions(-)
 
-
-  .../resources/strings.po                      |  14 +-
-  system/settings/settings.xml                  |   5 +
-  xbmc/application/Application.cpp              |   3 +-
-  .../HwDecRender/RendererAML.cpp               |  44 ++-
-  .../VideoRenderers/HwDecRender/RendererAML.h  |   2 +
-  xbmc/settings/Settings.h                      |   1 +
-  xbmc/utils/IScreenshotSurface.h               |  21 ++
-  xbmc/utils/Screenshot.cpp                     |  26 ++
-  xbmc/utils/ScreenshotAML.cpp                  | 320 ++++++++++++++----
-  xbmc/utils/ScreenshotAML.h                    |  49 ++-
-  .../amlogic/ScreenshotSurfaceAML.cpp          |  19 +-
-  11 files changed, 420 insertions(+), 84 deletions(-)
-
-
-  .../resources/strings.po                      |  14 +-
-  system/settings/settings.xml                  |   5 +
-  xbmc/application/Application.cpp              |   3 +-
-  .../VideoPlayer/DVDCodecs/Video/AMLCodec.h    |   8 +
-  .../HwDecRender/RendererAML.cpp               |  49 ++-
-  .../VideoRenderers/HwDecRender/RendererAML.h  |   2 +
-  xbmc/settings/Settings.h                      |   1 +
-  xbmc/utils/IScreenshotSurface.h               |  21 ++
-  xbmc/utils/Screenshot.cpp                     |  26 ++
-  xbmc/utils/ScreenshotAML.cpp                  | 325 ++++++++++++++----
-  xbmc/utils/ScreenshotAML.h                    |  52 ++-
-  .../amlogic/ScreenshotSurfaceAML.cpp          |  19 +-
-  12 files changed, 441 insertions(+), 84 deletions(-)
-
-
-  .../resources/strings.po                      |  14 +-
-  system/settings/settings.xml                  |   5 +
-  xbmc/application/Application.cpp              |   3 +-
-  .../VideoPlayer/DVDCodecs/Video/AMLCodec.h    |   8 +
-  .../HwDecRender/RendererAML.cpp               |  49 ++-
-  .../VideoRenderers/HwDecRender/RendererAML.h  |   2 +
-  xbmc/settings/Settings.h                      |   1 +
-  xbmc/utils/IScreenshotSurface.h               |  21 +
-  xbmc/utils/Screenshot.cpp                     |  26 ++
-  xbmc/utils/ScreenshotAML.cpp                  | 373 ++++++++++++++----
-  xbmc/utils/ScreenshotAML.h                    |  52 ++-
-  .../amlogic/ScreenshotSurfaceAML.cpp          |  19 +-
-  12 files changed, 479 insertions(+), 94 deletions(-)
+ .../resource.language.en_gb/resources/strings.po   |  14 +-
+ system/settings/settings.xml                       |   5 +
+ xbmc/application/Application.cpp                   |   3 +-
+ xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.h  |   8 +
+ .../VideoRenderers/HwDecRender/RendererAML.cpp     |  49 ++-
+ .../VideoRenderers/HwDecRender/RendererAML.h       |   2 +
+ xbmc/settings/Settings.h                           |   1 +
+ xbmc/utils/IScreenshotSurface.h                    |  21 ++
+ xbmc/utils/Screenshot.cpp                          |  26 ++
+ xbmc/utils/ScreenshotAML.cpp                       | 373 +++++++++++++++++----
+ xbmc/utils/ScreenshotAML.h                         |  52 ++-
+ xbmc/windowing/amlogic/ScreenshotSurfaceAML.cpp    |  19 +-
+ 12 files changed, 479 insertions(+), 94 deletions(-)
 
 diff --git a/addons/resource.language.en_gb/resources/strings.po b/addons/resource.language.en_gb/resources/strings.po
-index 61a27a8..cdcabd4 100644
+index 26833fd..cb7fff6 100644
 --- a/addons/resource.language.en_gb/resources/strings.po
 +++ b/addons/resource.language.en_gb/resources/strings.po
-@@ -25456,7 +25456,19 @@ msgctxt "#39217"
- msgid "Best"
+@@ -25576,7 +25576,19 @@ msgctxt "#39219"
+ msgid "Use the system Dolby Vision extensions to correctly display Dolby Vision profile 5, 7 (excludes FEL reconstruction), 8 and 10 video."
  msgstr ""
  
--#empty strings from id 39218 to 39899
+-#empty strings from id 39220 to 39899
 +#. Label of the setting "Tone map HDR screenshots to SDR"
 +#: system/settings/settings.xml
-+msgctxt "#39218"
++msgctxt "#39220"
 +msgid "Tone map HDR screenshots to SDR"
 +msgstr ""
 +
-+#. Description of setting with label #39218 "Tone map HDR screenshots to SDR"
++#. Description of setting with label #39220 "Tone map HDR screenshots to SDR"
 +#: system/settings/settings.xml
-+msgctxt "#39219"
++msgctxt "#39221"
 +msgid "Convert screenshots of HDR video to SDR, so they look right in any image viewer. When disabled the picture keeps the video's HDR coding (PQ or HLG, BT.2020) and is tagged with it."
 +msgstr ""
 +
-+#empty strings from id 39220 to 39899
++#empty strings from id 39222 to 39899
  
  #. List formatting: pattern used to join a list of exactly two items, e.g. "A and B"
  #. STR_LIST_AND_TWO
 diff --git a/system/settings/settings.xml b/system/settings/settings.xml
-index 1ccfff3..1e3f5c9 100755
+index fddeb47..60d39c8 100755
 --- a/system/settings/settings.xml
 +++ b/system/settings/settings.xml
-@@ -4016,6 +4016,11 @@
+@@ -4065,6 +4065,11 @@
              <heading>657</heading>
            </control>
          </setting>
-+        <setting id="debug.screenshottonemap" type="boolean" label="39218" help="39219">
++        <setting id="debug.screenshottonemap" type="boolean" label="39220" help="39221">
 +          <level>1</level>
 +          <default>true</default>
 +          <control type="toggle" />
@@ -116,10 +74,10 @@ index 1ccfff3..1e3f5c9 100755
        <group id="2" label="14111">
          <setting id="eventlog.enabled" type="boolean" label="14112" help="36460">
 diff --git a/xbmc/application/Application.cpp b/xbmc/application/Application.cpp
-index d8d55b8..2e31bd7 100644
+index d18fb3f..a7a2ba5 100644
 --- a/xbmc/application/Application.cpp
 +++ b/xbmc/application/Application.cpp
-@@ -877,7 +877,8 @@ void ServiceCaptureTaps()
+@@ -882,7 +882,8 @@ void ServiceCaptureTaps(CApplicationPlayer& player)
    result.height = static_cast<unsigned int>(surface->GetHeight());
    result.stride = surface->GetStride();
    result.format = surface->GetFormat();
@@ -128,7 +86,7 @@ index d8d55b8..2e31bd7 100644
 +    result.color = GetOutputColorMetadata(*winSystem);
    result.content = CaptureContent::COMPOSITE; // this tap is the composite half
  
-   captureService->Complete(request, result);
+   if (!player.CompositeVideoCapture(result))
 diff --git a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.h b/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.h
 index d516563..c7bc246 100644
 --- a/xbmc/cores/VideoPlayer/DVDCodecs/Video/AMLCodec.h
@@ -149,7 +107,7 @@ index d516563..c7bc246 100644
    std::string   GetVfmMap(const std::string &name);
    void          SetVfmMap(const std::string &name, const std::string &map);
 diff --git a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererAML.cpp b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererAML.cpp
-index 789dcb6..85199ea 100644
+index 609ca38..e80fa9f 100644
 --- a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererAML.cpp
 +++ b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererAML.cpp
 @@ -17,6 +17,8 @@
@@ -199,7 +157,7 @@ index 789dcb6..85199ea 100644
    // Calculate the input frame aspect ratio.
    CalculateFrameAspectRatio(picture.iDisplayWidth, picture.iDisplayHeight);
    SetViewMode(m_videoSettings.m_ViewMode);
-@@ -271,7 +295,7 @@ std::shared_ptr<CAMLCodec> CRendererAML::QueueFrame(int index, bool setVideoRect
+@@ -273,7 +297,7 @@ std::shared_ptr<CAMLCodec> CRendererAML::QueueFrame(int index, bool setVideoRect
  void CRendererAML::RenderUpdate(int index, int index2, bool clear, unsigned int flags, unsigned int alpha)
  {
    ManageRenderArea();
@@ -208,7 +166,7 @@ index 789dcb6..85199ea 100644
  
    if (m_vsyncPresent)
    {
-@@ -378,19 +402,26 @@ bool CRendererAML::CaptureVideoFrame(const KODI::RENDERING::CAPTURE::CaptureSpec
+@@ -381,19 +405,26 @@ bool CRendererAML::CaptureVideoFrame(const KODI::RENDERING::CAPTURE::CaptureSpec
        spec.width ? spec.width : static_cast<unsigned int>(std::lround(m_destRect.Width()));
    const unsigned int height =
        spec.height ? spec.height : static_cast<unsigned int>(std::lround(m_destRect.Height()));
@@ -243,7 +201,7 @@ index 789dcb6..85199ea 100644
    return true;
  }
 diff --git a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererAML.h b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererAML.h
-index 665267b..c9f8392 100644
+index ae560cb..f1c1022 100644
 --- a/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererAML.h
 +++ b/xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererAML.h
 @@ -9,6 +9,7 @@
@@ -254,10 +212,10 @@ index 665267b..c9f8392 100644
  
  #include <atomic>
  #include <memory>
-@@ -70,6 +71,7 @@ private:
-   } m_buffers[m_numRenderBuffers];
+@@ -71,6 +72,7 @@ private:
  
    uint64_t m_prevVPts;
+   std::weak_ptr<CAMLCodec> m_prevCodec;
 +  AMLVideoColor m_videoColor;
    uint64_t m_hdrGuiOwner{0};
    bool m_bConfigured;
